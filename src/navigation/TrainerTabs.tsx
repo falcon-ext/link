@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TrainerDashboardScreen } from '../screens/trainer/TrainerDashboardScreen';
-import { StudentsScreen } from '../screens/trainer/StudentsScreen';
+import { StudentsStack } from './StudentsStack';
 import { ExercisesScreen } from '../screens/trainer/ExercisesScreen';
 import { TipsScreen } from '../screens/trainer/TipsScreen';
 import { SettingsScreen } from '../screens/trainer/SettingsScreen';
@@ -19,7 +19,7 @@ const tabs: {
   iconActive: IoniconsName;
 }[] = [
   { name: 'Dashboard', label: 'Início',     component: TrainerDashboardScreen, icon: 'home-outline',     iconActive: 'home' },
-  { name: 'Students',  label: 'Alunos',     component: StudentsScreen,         icon: 'people-outline',   iconActive: 'people' },
+  { name: 'Students',  label: 'Alunos',     component: StudentsStack,          icon: 'people-outline',   iconActive: 'people' },
   { name: 'Exercises', label: 'Exercícios', component: ExercisesScreen,        icon: 'barbell-outline',  iconActive: 'barbell' },
   { name: 'Tips',      label: 'Dicas',      component: TipsScreen,             icon: 'bulb-outline',     iconActive: 'bulb' },
   { name: 'Settings',  label: 'Config',     component: SettingsScreen,         icon: 'settings-outline', iconActive: 'settings' },
