@@ -95,26 +95,20 @@ export function ExerciseDetailScreen({ navigation, route }: Props) {
             </View>
           ) : null}
 
-          {exercise.is_custom ? (
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 bg-brand-dark-2 border border-brand-dark-3 rounded-xl py-3 items-center"
-                onPress={() => navigation.navigate('EditExercise', { exercise })}
-              >
-                <Text className="text-white font-semibold">Editar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 bg-red-900/30 border border-red-900 rounded-xl py-3 items-center"
-                onPress={handleDelete}
-              >
-                <Text className="text-red-400 font-semibold">Excluir</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View className="bg-brand-dark-2 rounded-xl p-3">
-              <Text className="text-gray-500 text-xs text-center">Exercício padrão — não pode ser editado</Text>
-            </View>
-          )}
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              className="flex-1 bg-brand-dark-2 border border-brand-dark-3 rounded-xl py-3 items-center"
+              onPress={() => navigation.navigate('EditExercise', { exercise })}
+            >
+              <Text className="text-white font-semibold">Editar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 bg-red-900/30 border border-red-900 rounded-xl py-3 items-center"
+              onPress={handleDelete}
+            >
+              <Text className="text-red-400 font-semibold">Excluir</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
