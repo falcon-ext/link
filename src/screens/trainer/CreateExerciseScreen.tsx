@@ -140,17 +140,28 @@ export function CreateExerciseScreen({ navigation, route }: Props) {
             {/* Grupo muscular */}
             <Text className="text-sm font-medium text-gray-400 mb-2">Grupo muscular</Text>
             <View className="flex-row flex-wrap gap-2 mb-4">
-              {MUSCLE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.key}
-                  className={`px-4 py-2 rounded-full border ${muscleGroup === opt.key ? 'bg-brand-green border-brand-green' : 'border-brand-dark-3 bg-brand-dark-2'}`}
-                  onPress={() => setMuscleGroup(opt.key)}
-                >
-                  <Text className={`text-sm font-medium ${muscleGroup === opt.key ? 'text-brand-dark' : 'text-gray-400'}`}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {MUSCLE_OPTIONS.map((opt) => {
+                const active = muscleGroup === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    activeOpacity={0.7}
+                    onPress={() => setMuscleGroup(opt.key)}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: active ? '#8DC63F' : '#2E3330',
+                      backgroundColor: active ? '#8DC63F' : '#242827',
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: active ? '#1A1D1C' : '#9CA3AF' }}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* Equipamento */}

@@ -9,7 +9,8 @@ import { ProgramDetailScreen } from '../screens/trainer/ProgramDetailScreen';
 import { SheetDetailScreen } from '../screens/trainer/SheetDetailScreen';
 import { ExercisePickerScreen } from '../screens/trainer/ExercisePickerScreen';
 import { AddExerciseParamsScreen } from '../screens/trainer/AddExerciseParamsScreen';
-import { Profile, Program, WorkoutSheet, Exercise } from '../types';
+import { EditSheetExerciseScreen } from '../screens/trainer/EditSheetExerciseScreen';
+import { Profile, Program, WorkoutSheet, Exercise, SheetExercise } from '../types';
 
 export type StudentsStackParams = {
   StudentsList: undefined;
@@ -22,6 +23,7 @@ export type StudentsStackParams = {
   SheetDetail: { sheet: WorkoutSheet; program: Program };
   ExercisePicker: { sheetId: string; orderIndex: number };
   AddExerciseParams: { sheetId: string; exercise: Exercise; orderIndex: number };
+  EditSheetExercise: { sheetExercise: SheetExercise };
 };
 
 const Stack = createNativeStackNavigator<StudentsStackParams>();
@@ -39,6 +41,7 @@ export function StudentsStack() {
       <Stack.Screen name="SheetDetail" component={SheetDetailScreen} />
       <Stack.Screen name="ExercisePicker" component={ExercisePickerScreen} />
       <Stack.Screen name="AddExerciseParams" component={AddExerciseParamsScreen} />
+      <Stack.Screen name="EditSheetExercise" component={EditSheetExerciseScreen} />
     </Stack.Navigator>
   );
 }

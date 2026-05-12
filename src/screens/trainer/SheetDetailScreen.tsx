@@ -110,13 +110,20 @@ export function SheetDetailScreen({ navigation, route }: Props) {
                   <Text className="text-gray-500 text-xs mt-2 italic">{item.notes}</Text>
                 ) : null}
               </View>
-              <TouchableOpacity
-                onPress={() => handleDelete(item)}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                className="ml-2"
-              >
-                <Ionicons name="trash-outline" size={18} color="#6b7280" />
-              </TouchableOpacity>
+              <View className="flex-row gap-3 ml-2">
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('EditSheetExercise', { sheetExercise: item })}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="pencil-outline" size={18} color="#8DC63F" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDelete(item)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
           ListEmptyComponent={

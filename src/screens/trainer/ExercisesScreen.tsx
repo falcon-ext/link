@@ -86,17 +86,30 @@ export function ExercisesScreen({ navigation }: Props) {
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.key}
+        style={{ flexGrow: 0, flexShrink: 0 }}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 8 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            className={`mr-2 px-4 py-1.5 rounded-full border ${filter === item.key ? 'bg-brand-green border-brand-green' : 'border-brand-dark-3 bg-brand-dark-2'}`}
-            onPress={() => setFilter(item.key)}
-          >
-            <Text className={`text-sm font-medium ${filter === item.key ? 'text-brand-dark' : 'text-gray-400'}`}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const active = filter === item.key;
+          return (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setFilter(item.key)}
+              style={{
+                marginRight: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 7,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: active ? '#8DC63F' : '#2E3330',
+                backgroundColor: active ? '#8DC63F' : '#242827',
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '500', color: active ? '#1A1D1C' : '#9CA3AF' }}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
       />
 
       {/* Lista */}
