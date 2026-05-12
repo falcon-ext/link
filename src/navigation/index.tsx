@@ -1,4 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { AuthStack } from './AuthStack';
@@ -10,21 +11,25 @@ export function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#6366f1" />
-      </View>
+      <SafeAreaProvider>
+        <View className="flex-1 items-center justify-center bg-brand-dark">
+          <ActivityIndicator size="large" color="#8DC63F" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <NavigationContainer>
-      {!profile ? (
-        <AuthStack />
-      ) : profile.role === 'trainer' ? (
-        <TrainerTabs />
-      ) : (
-        <StudentTabs />
-      )}
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        {!profile ? (
+          <AuthStack />
+        ) : profile.role === 'trainer' ? (
+          <TrainerTabs />
+        ) : (
+          <StudentTabs />
+        )}
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

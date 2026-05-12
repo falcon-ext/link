@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TrainerDashboardScreen } from '../screens/trainer/TrainerDashboardScreen';
 import { StudentsScreen } from '../screens/trainer/StudentsScreen';
 import { ExercisesScreen } from '../screens/trainer/ExercisesScreen';
@@ -17,14 +18,16 @@ const tabs: {
   icon: IoniconsName;
   iconActive: IoniconsName;
 }[] = [
-  { name: 'Dashboard', label: 'Início',     component: TrainerDashboardScreen, icon: 'home-outline',    iconActive: 'home' },
-  { name: 'Students',  label: 'Alunos',     component: StudentsScreen,         icon: 'people-outline',  iconActive: 'people' },
-  { name: 'Exercises', label: 'Exercícios', component: ExercisesScreen,        icon: 'barbell-outline', iconActive: 'barbell' },
-  { name: 'Tips',      label: 'Dicas',      component: TipsScreen,             icon: 'bulb-outline',    iconActive: 'bulb' },
-  { name: 'Settings',  label: 'Config',     component: SettingsScreen,         icon: 'settings-outline',iconActive: 'settings' },
+  { name: 'Dashboard', label: 'Início',     component: TrainerDashboardScreen, icon: 'home-outline',     iconActive: 'home' },
+  { name: 'Students',  label: 'Alunos',     component: StudentsScreen,         icon: 'people-outline',   iconActive: 'people' },
+  { name: 'Exercises', label: 'Exercícios', component: ExercisesScreen,        icon: 'barbell-outline',  iconActive: 'barbell' },
+  { name: 'Tips',      label: 'Dicas',      component: TipsScreen,             icon: 'bulb-outline',     iconActive: 'bulb' },
+  { name: 'Settings',  label: 'Config',     component: SettingsScreen,         icon: 'settings-outline', iconActive: 'settings' },
 ];
 
 export function TrainerTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => {
@@ -37,8 +40,8 @@ export function TrainerTabs() {
             backgroundColor: '#1A1D1C',
             borderTopColor: '#2E3330',
             borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 8,
+            height: 56 + insets.bottom,
+            paddingBottom: insets.bottom + 6,
             paddingTop: 6,
           },
           tabBarLabelStyle: {
