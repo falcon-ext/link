@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StudentHomeScreen } from '../screens/student/StudentHomeScreen';
-import { WorkoutScreen } from '../screens/student/WorkoutScreen';
+import { StudentWorkoutStack } from './StudentWorkoutStack';
 import { HistoryScreen } from '../screens/student/HistoryScreen';
 import { AssessmentsScreen } from '../screens/student/AssessmentsScreen';
 import { StudentTipsScreen } from '../screens/student/StudentTipsScreen';
@@ -19,7 +19,7 @@ const tabs: {
   iconActive: IoniconsName;
 }[] = [
   { name: 'Home',        label: 'Início',    component: StudentHomeScreen,  icon: 'home-outline',    iconActive: 'home' },
-  { name: 'Workout',     label: 'Treino',    component: WorkoutScreen,      icon: 'fitness-outline', iconActive: 'fitness' },
+  { name: 'Workout',     label: 'Treino',    component: StudentWorkoutStack, icon: 'fitness-outline', iconActive: 'fitness' },
   { name: 'History',     label: 'Histórico', component: HistoryScreen,      icon: 'time-outline',    iconActive: 'time' },
   { name: 'Assessments', label: 'Avaliações',component: AssessmentsScreen,  icon: 'body-outline',    iconActive: 'body' },
   { name: 'Tips',        label: 'Dicas',     component: StudentTipsScreen,  icon: 'bulb-outline',    iconActive: 'bulb' },
