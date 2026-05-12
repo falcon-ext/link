@@ -28,3 +28,33 @@ export interface Exercise {
   is_custom: boolean;
   created_at: string;
 }
+
+export interface Program {
+  id: string;
+  student_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WorkoutSheet {
+  id: string;
+  program_id: string;
+  name: string;
+  order_index: number;
+  created_at: string;
+}
+
+export interface SheetExercise {
+  id: string;
+  sheet_id: string;
+  exercise_id: string;
+  sets: number;
+  reps: string;
+  load: string | null;
+  rest_seconds: number | null;
+  notes: string | null;
+  order_index: number;
+  created_at: string;
+  exercise?: Exercise;
+}
