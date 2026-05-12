@@ -1,6 +1,16 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthStackParams } from '../../navigation/AuthStack';
 import { supabase } from '../../lib/supabase';
 
@@ -34,7 +44,6 @@ export function RegisterScreen({ navigation }: Props) {
     setLoading(true);
     setError('');
 
-    // Valida o código de acesso
     const { data: settings, error: settingsError } = await supabase
       .from('app_settings')
       .select('access_code')
@@ -53,7 +62,6 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
-    // Cria o usuário
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
 
     if (signUpError || !data.user) {
@@ -62,7 +70,6 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
-    // Cria o perfil
     const { error: profileError } = await supabase.from('profiles').insert({
       id: data.user.id,
       role: 'student',
@@ -74,97 +81,66 @@ export function RegisterScreen({ navigation }: Props) {
 
     if (profileError) {
       setError('Conta criada, mas erro ao salvar perfil. Contate seu personal.');
-      return;
     }
-
-    // O listener em App.tsx redireciona automaticamente
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView className="flex-1 bg-brand-dark">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View className="flex-1 justify-center px-6 py-10">
-          <TouchableOpacity className="mb-6" onPress={() => navigation.goBack()}>
-            <Text className="text-indigo-600 text-sm">← Voltar</Text>
-          </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <View className="flex-1 px-6 py-8">
 
-          <Text className="text-3xl font-bold text-gray-900 mb-1">Cadastro</Text>
-          <Text className="text-base text-gray-500 mb-8">Crie sua conta de aluno</Text>
+            <TouchableOpacity className="mb-8" onPress={() => navigation.goBack()}>
+              <Text className="text-brand-green text-sm">← Voltar</Text>
+            </TouchableOpacity>
 
-          <Text className="text-sm font-medium text-gray-700 mb-1">Nome completo</Text>
-          <TextInput
-            className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 mb-4"
-            placeholder="Seu nome"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="words"
-            value={name}
-            onChangeText={setName}
-          />
+            <Text className="text-3xl font-bold text-white mb-1">Cadastro</Text>
+            <Text className="text-base text-gray-400 mb-8">Crie sua conta de aluno</Text>
 
-          <Text className="text-sm font-medium text-gray-700 mb-1">E-mail</Text>
-          <TextInput
-            className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 mb-4"
-            placeholder="seu@email.com"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
+            {[
+              { label: 'Nome completo', value: name, setter: setName, placeholder: 'Seu nome', caps: 'words' as const, keyboard: 'default' as const, secure: false },
+              { label: 'E-mail', value: email, setter: setEmail, placeholder: 'seu@email.com', caps: 'none' as const, keyboard: 'email-address' as const, secure: false },
+              { label: 'Senha', value: password, setter: setPassword, placeholder: 'Mínimo 6 caracteres', caps: 'none' as const, keyboard: 'default' as const, secure: true },
+              { label: 'Confirmar senha', value: confirmPassword, setter: setConfirmPassword, placeholder: 'Repita a senha', caps: 'none' as const, keyboard: 'default' as const, secure: true },
+              { label: 'Código de acesso', value: accessCode, setter: setAccessCode, placeholder: 'Fornecido pelo seu personal', caps: 'none' as const, keyboard: 'default' as const, secure: false },
+            ].map(({ label, value, setter, placeholder, caps, keyboard, secure }) => (
+              <View key={label}>
+                <Text className="text-sm font-medium text-gray-400 mb-1">{label}</Text>
+                <TextInput
+                  className="bg-brand-dark-2 border border-brand-dark-3 rounded-xl px-4 py-3 text-base text-white mb-4"
+                  placeholder={placeholder}
+                  placeholderTextColor="#6b7280"
+                  autoCapitalize={caps}
+                  keyboardType={keyboard}
+                  secureTextEntry={secure}
+                  value={value}
+                  onChangeText={setter}
+                />
+              </View>
+            ))}
 
-          <Text className="text-sm font-medium text-gray-700 mb-1">Senha</Text>
-          <TextInput
-            className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 mb-4"
-            placeholder="Mínimo 6 caracteres"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+            {error ? (
+              <Text className="text-sm text-red-400 mb-4 text-center">{error}</Text>
+            ) : null}
 
-          <Text className="text-sm font-medium text-gray-700 mb-1">Confirmar senha</Text>
-          <TextInput
-            className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 mb-4"
-            placeholder="Repita a senha"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
+            <TouchableOpacity
+              className={`rounded-xl py-4 items-center mt-2 ${loading ? 'bg-brand-green-dark' : 'bg-brand-green'}`}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#1A1D1C" />
+              ) : (
+                <Text className="text-brand-dark font-bold text-base">Criar conta</Text>
+              )}
+            </TouchableOpacity>
 
-          <Text className="text-sm font-medium text-gray-700 mb-1">Código de acesso</Text>
-          <TextInput
-            className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 mb-6"
-            placeholder="Fornecido pelo seu personal"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="none"
-            value={accessCode}
-            onChangeText={setAccessCode}
-          />
-
-          {error ? (
-            <Text className="text-sm text-red-500 mb-4 text-center">{error}</Text>
-          ) : null}
-
-          <TouchableOpacity
-            className={`rounded-xl py-4 items-center ${loading ? 'bg-indigo-300' : 'bg-indigo-600'}`}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white font-semibold text-base">Criar conta</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
