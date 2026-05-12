@@ -98,15 +98,6 @@ export function LoginScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            className="mt-6 items-center"
-            onPress={() => navigation.navigate('Register')}
-          >
-            <Text className="text-sm text-gray-500">
-              Aluno?{' '}
-              <Text className="text-brand-green font-medium">Cadastre-se aqui</Text>
-            </Text>
-          </TouchableOpacity>
 
         </View>
       </KeyboardAvoidingView>

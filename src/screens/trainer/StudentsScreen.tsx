@@ -41,11 +41,19 @@ export function StudentsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-brand-dark">
-      <View className="px-6 pt-6 pb-2">
-        <Text className="text-2xl font-bold text-white">Alunos</Text>
-        <Text className="text-sm text-gray-400 mt-1">
-          {students.length} {students.length === 1 ? 'aluno cadastrado' : 'alunos cadastrados'}
-        </Text>
+      <View className="px-6 pt-6 pb-2 flex-row items-center justify-between">
+        <View>
+          <Text className="text-2xl font-bold text-white">Alunos</Text>
+          <Text className="text-sm text-gray-400 mt-1">
+            {students.length} {students.length === 1 ? 'aluno cadastrado' : 'alunos cadastrados'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          className="bg-brand-green w-10 h-10 rounded-full items-center justify-center"
+          onPress={() => navigation.navigate('CreateStudent')}
+        >
+          <Text className="text-brand-dark text-2xl font-bold leading-none">+</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
