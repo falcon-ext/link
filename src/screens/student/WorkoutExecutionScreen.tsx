@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Modal, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { StudentWorkoutStackParams } from '../../navigation/StudentWorkoutStack';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
+import { cloudinaryVideoThumbnail } from '../../lib/cloudinary';
 import { SheetExercise } from '../../types';
 
 type Props = {
@@ -34,6 +36,7 @@ export function WorkoutExecutionScreen({ navigation, route }: Props) {
   const [sets, setSets] = useState<Record<string, SetEntry>>({});
   const [elapsed, setElapsed] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [previewEx, setPreviewEx] = useState<SheetExercise | null>(null);
 
   const startedAt = useRef(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -220,6 +223,15 @@ export function WorkoutExecutionScreen({ navigation, route }: Props) {
                     {ex.rest_seconds ? ` · ${ex.rest_seconds}s descanso` : ''}
                   </Text>
                 </View>
+                {(ex.exercise?.video_url || ex.exercise?.description) && (
+                  <TouchableOpacity
+                    onPress={() => setPreviewEx(ex)}
+                    hitSlop={8}
+                    className="p-1"
+                  >
+                    <Ionicons name="play-circle-outline" size={22} color="#8DC63F" />
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Set rows */}
@@ -297,6 +309,85 @@ export function WorkoutExecutionScreen({ navigation, route }: Props) {
           )}
         </TouchableOpacity>
       </View>
+      {/* Modal de preview do exercício */}
+      {previewEx && (
+        <ExercisePreviewModal ex={previewEx} onClose={() => setPreviewEx(null)} />
+      )}
     </SafeAreaView>
+  );
+}
+
+function ExercisePreviewModal({ ex, onClose }: { ex: SheetExercise; onClose: () => void }) {
+  const videoUrl = ex.exercise?.video_url ?? '';
+  const [playing, setPlaying] = useState(false);
+  const player = useVideoPlayer(videoUrl, (p) => { p.loop = true; });
+  const thumb = ex.exercise?.thumbnail_url
+    ?? (videoUrl ? cloudinaryVideoThumbnail(videoUrl) : null);
+
+  return (
+    <Modal animationType="slide" transparent onRequestClose={onClose}>
+      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+        <View className="bg-brand-dark rounded-t-3xl overflow-hidden" style={{ maxHeight: '85%' }}>
+          {/* Vídeo */}
+          {videoUrl ? (
+            <View style={{ aspectRatio: 16 / 9, backgroundColor: '#000' }}>
+              {playing ? (
+                <VideoView player={player} style={{ flex: 1 }} allowsFullscreen />
+              ) : (
+                <TouchableOpacity
+                  className="flex-1 items-center justify-center"
+                  style={{ flex: 1 }}
+                  onPress={() => { player.play(); setPlaying(true); }}
+                >
+                  {thumb && (
+                    <Image source={{ uri: thumb }} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
+                  )}
+                  <View className="bg-black/50 w-16 h-16 rounded-full items-center justify-center">
+                    <Ionicons name="play" size={32} color="#8DC63F" />
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
+
+          <ScrollView contentContainerStyle={{ padding: 24 }}>
+            <View className="flex-row items-start justify-between mb-3">
+              <Text className="text-white text-xl font-bold flex-1 mr-3">
+                {ex.exercise?.name}
+              </Text>
+              <TouchableOpacity onPress={onClose} hitSlop={8}>
+                <Ionicons name="close-circle" size={28} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="flex-row mb-4">
+              <View className="bg-brand-dark-2 rounded-xl px-3 py-1.5 mr-2">
+                <Text className="text-white text-sm font-semibold">{ex.sets} séries</Text>
+              </View>
+              <View className="bg-brand-dark-2 rounded-xl px-3 py-1.5 mr-2">
+                <Text className="text-white text-sm font-semibold">{ex.reps} reps</Text>
+              </View>
+              {ex.load ? (
+                <View className="bg-brand-dark-2 rounded-xl px-3 py-1.5">
+                  <Text className="text-white text-sm font-semibold">{ex.load} kg</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {ex.exercise?.description ? (
+              <Text className="text-gray-300 text-sm leading-6">{ex.exercise.description}</Text>
+            ) : !videoUrl ? (
+              <Text className="text-gray-500 text-sm">Sem vídeo ou descrição cadastrados.</Text>
+            ) : null}
+
+            {ex.notes ? (
+              <View className="mt-4 bg-brand-dark-2 rounded-xl p-3">
+                <Text className="text-gray-400 text-xs italic">{ex.notes}</Text>
+              </View>
+            ) : null}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
