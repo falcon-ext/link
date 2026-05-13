@@ -137,18 +137,14 @@ export function WorkoutPickScreen({ navigation }: Props) {
                         navigation.navigate('WorkoutExecution', { sheet, program });
                       }}
                     >
-                      <View
-                        className="w-12 h-12 rounded-full items-center justify-center mr-4"
-                        style={{ backgroundColor: done ? '#2E3330' : '#8DC63F22' }}
-                      >
-                        {done ? (
-                          <Ionicons name="checkmark" size={22} color="#8DC63F" />
-                        ) : (
-                          <Text className="text-brand-green text-lg font-bold">
-                            {String.fromCharCode(65 + index)}
-                          </Text>
-                        )}
-                      </View>
+                      {done && (
+                        <View
+                          className="w-10 h-10 rounded-full items-center justify-center mr-4"
+                          style={{ backgroundColor: '#2E3330' }}
+                        >
+                          <Ionicons name="checkmark" size={20} color="#8DC63F" />
+                        </View>
+                      )}
                       <View className="flex-1">
                         <Text className="text-white font-bold text-base">{sheet.name}</Text>
                         {done && (
