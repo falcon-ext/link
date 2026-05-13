@@ -88,6 +88,20 @@ export function StudentProfileScreen() {
     loadRanking(p);
   }
 
+  function handleLogout() {
+    Alert.alert('Sair', 'Deseja sair do PowerLink?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+          setProfile(null);
+        },
+      },
+    ]);
+  }
+
   async function handleChangeAvatar() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -321,6 +335,15 @@ export function StudentProfileScreen() {
             })}
           </View>
         </View>
+
+        {/* Sair */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          className="mx-6 mt-6 flex-row items-center justify-center bg-brand-dark-2 rounded-2xl py-4"
+        >
+          <Ionicons name="log-out-outline" size={18} color="#ef4444" style={{ marginRight: 8 }} />
+          <Text className="text-red-500 font-semibold text-sm">Sair do app</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
