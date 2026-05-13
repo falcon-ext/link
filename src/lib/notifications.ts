@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
@@ -29,8 +30,14 @@ export async function registerPushToken(userId: string) {
     });
   }
 
-  const token = (await Notifications.getExpoPushTokenAsync()).data;
-  await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
+  try {
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
+  } catch {
+    // Expo Go não suporta push tokens remotos; ignorado silenciosamente
+  }
 }
 
 export async function sendPush(token: string, title: string, body: string) {
