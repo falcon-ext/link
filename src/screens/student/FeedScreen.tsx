@@ -116,6 +116,29 @@ export function FeedScreen() {
     }
   }
 
+  async function deletePost(postId: string) {
+    Alert.alert(
+      'Excluir post',
+      'Tem certeza que quer remover este check-in do feed?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.from('feed_posts').delete().eq('id', postId);
+            setPosts((prev) => prev.filter((p) => p.id !== postId));
+            setLikeMap((prev) => {
+              const next = { ...prev };
+              delete next[postId];
+              return next;
+            });
+          },
+        },
+      ]
+    );
+  }
+
   async function addPhoto(postId: string) {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -278,8 +301,15 @@ export function FeedScreen() {
                       {timeAgo(post.created_at)}
                     </Text>
                   </View>
-                  <View className="w-6 h-6 rounded-full bg-brand-green/20 items-center justify-center">
-                    <Ionicons name="checkmark" size={14} color="#8DC63F" />
+                  <View className="flex-row items-center gap-2">
+                    {isMe && (
+                      <TouchableOpacity onPress={() => deletePost(post.id)} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={17} color="#6b7280" />
+                      </TouchableOpacity>
+                    )}
+                    <View className="w-6 h-6 rounded-full bg-brand-green/20 items-center justify-center">
+                      <Ionicons name="checkmark" size={14} color="#8DC63F" />
+                    </View>
                   </View>
                 </View>
 
