@@ -14,7 +14,7 @@ export function StudentHomeScreen() {
   const [program, setProgram] = useState<Program | null>(null);
   const [sheets, setSheets] = useState<WorkoutSheet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [workoutCount, setWorkoutCount] = useState(0);
+  const [activeDays, setActiveDays] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -26,12 +26,13 @@ export function StudentHomeScreen() {
   async function loadProgram() {
     setLoading(true);
 
-    const { count } = await supabase
+    const { data: logData } = await supabase
       .from('workout_logs')
-      .select('*', { count: 'exact', head: true })
+      .select('finished_at')
       .eq('student_id', profile!.id)
       .not('finished_at', 'is', null);
-    setWorkoutCount(count ?? 0);
+    const days = new Set((logData ?? []).map((l: any) => (l.finished_at as string).split('T')[0]));
+    setActiveDays(days.size);
 
     const { data: prog } = await supabase
       .from('programs')
@@ -58,7 +59,7 @@ export function StudentHomeScreen() {
   }
 
   const firstName = profile?.name?.split(' ')[0] ?? '';
-  const { level, currentXP, nextLevelXP } = getLevelInfo(workoutCount);
+  const { level, currentXP, nextLevelXP } = getLevelInfo(activeDays);
   const xpProgress = nextLevelXP > 0 ? (currentXP / nextLevelXP) * 100 : 100;
 
   return (

@@ -1,12 +1,13 @@
-export const XP_PER_WORKOUT = 30;
+export const XP_PER_DAY = 30;
 
 // XP necessário para ir do nível N para N+1: começa em 30, aumenta 15 por nível
 export function xpForNextLevel(level: number): number {
   return 30 + (level - 1) * 15;
 }
 
-export function getLevelInfo(totalWorkouts: number) {
-  const totalXP = totalWorkouts * XP_PER_WORKOUT;
+// activeDays = número de dias únicos em que qualquer treino foi concluído
+export function getLevelInfo(activeDays: number) {
+  const totalXP = activeDays * XP_PER_DAY;
   let level = 1;
   let xpAccumulated = 0;
   while (true) {
@@ -55,6 +56,7 @@ export function computeStats(logs: WorkoutLogMinimal[]) {
 
   // Dias únicos treinados (YYYY-MM-DD), ordenados
   const days = [...new Set(logs.map((l) => l.finished_at.split('T')[0]))].sort();
+  const activeDays = days.length;
 
   // Sequência máxima de dias consecutivos
   let maxStreak = days.length > 0 ? 1 : 0;
@@ -93,7 +95,7 @@ export function computeStats(logs: WorkoutLogMinimal[]) {
   const monthlyMax =
     Object.values(monthCounts).length > 0 ? Math.max(...Object.values(monthCounts)) : 0;
 
-  return { totalWorkouts, maxStreak, weeklyMax, monthlyMax };
+  return { totalWorkouts, activeDays, maxStreak, weeklyMax, monthlyMax };
 }
 
 export function checkAchievements(stats: ReturnType<typeof computeStats>): Set<string> {

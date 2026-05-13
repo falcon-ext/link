@@ -63,7 +63,7 @@ export function ConquistasScreen() {
 
     const logs = (logData ?? []) as { finished_at: string }[];
     const stats = computeStats(logs);
-    setLevelInfo(getLevelInfo(stats.totalWorkouts));
+    setLevelInfo(getLevelInfo(stats.activeDays));
     setUnlockedAchievements(checkAchievements(stats));
     setLoadingStats(false);
   }

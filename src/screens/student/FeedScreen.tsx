@@ -55,6 +55,7 @@ export function FeedScreen() {
   const [likeMap, setLikeMap]   = useState<Record<string, LikeState>>({});
   const [workoutCount, setWorkoutCount] = useState(0);
   const [uploading, setUploading]       = useState<string | null>(null);
+  const [activeDays, setActiveDays]     = useState(0);
 
   const [reminderModal, setReminderModal]     = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -80,12 +81,14 @@ export function FeedScreen() {
   async function loadFeed() {
     setLoading(true);
 
-    const { count } = await supabase
+    const { data: logData } = await supabase
       .from('workout_logs')
-      .select('*', { count: 'exact', head: true })
+      .select('finished_at')
       .eq('student_id', profile!.id)
       .not('finished_at', 'is', null);
-    setWorkoutCount(count ?? 0);
+    const days = new Set((logData ?? []).map((l: any) => (l.finished_at as string).split('T')[0]));
+    setActiveDays(days.size);
+    setWorkoutCount((logData ?? []).length);
 
     const { data: postData } = await supabase
       .from('feed_posts')
@@ -307,7 +310,7 @@ export function FeedScreen() {
       }, {})
   );
 
-  const { level, currentXP, nextLevelXP } = getLevelInfo(workoutCount);
+  const { level, currentXP, nextLevelXP } = getLevelInfo(activeDays);
   const xpProgress = nextLevelXP > 0 ? (currentXP / nextLevelXP) * 100 : 100;
 
   if (loading) {

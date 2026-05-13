@@ -68,7 +68,7 @@ export function StudentProfileScreen() {
 
     const logs = (logData ?? []) as { finished_at: string }[];
     const stats = computeStats(logs);
-    setLevelInfo(getLevelInfo(stats.totalWorkouts));
+    setLevelInfo(getLevelInfo(stats.activeDays));
     setUnlockedAchievements(checkAchievements(stats));
     setLoadingStats(false);
   }
@@ -188,7 +188,7 @@ export function StudentProfileScreen() {
             />
           </View>
           <Text className="text-gray-600 text-xs">
-            {levelInfo.totalXP} XP total · {Math.floor(levelInfo.totalXP / 30)} treinos realizados
+            {levelInfo.totalXP} XP total · {Math.floor(levelInfo.totalXP / 30)} dias ativos
           </Text>
         </View>
 
