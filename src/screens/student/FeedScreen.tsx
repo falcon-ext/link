@@ -245,7 +245,7 @@ export function FeedScreen() {
         {/* Level bar */}
         <TouchableOpacity
           className="mx-6 bg-brand-dark-2 rounded-2xl px-4 py-3 mb-5"
-          onPress={() => navigation.navigate('Conquistas')}
+          onPress={() => navigation.navigate('Perfil')}
         >
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-white text-sm font-semibold">
