@@ -6,6 +6,7 @@ import { RouteProp } from '@react-navigation/native';
 import { StudentsStackParams } from '../../navigation/StudentsStack';
 import { supabase } from '../../lib/supabase';
 import { AssessmentFull, AssessmentPhoto } from './TrainerAssessmentListScreen';
+import { computeFromAssessment, sfSigma, calcRCQ, calcICE } from '../../lib/bodyComposition';
 
 type Props = {
   navigation: NativeStackNavigationProp<StudentsStackParams, 'AssessmentCompare'>;
@@ -98,6 +99,14 @@ export function AssessmentCompareScreen({ navigation, route }: Props) {
   const b = sideB.assessment;
   const bmiA = bmi(a.weight_kg, a.height_cm);
   const bmiB = bmi(b.weight_kg, b.height_cm);
+  const bcA  = computeFromAssessment(a);
+  const bcB  = computeFromAssessment(b);
+  const sigA = sfSigma(a);
+  const sigB = sfSigma(b);
+  const rcqA = (a.waist_cm && a.hip_cm)    ? calcRCQ(a.waist_cm, a.hip_cm)    : null;
+  const rcqB = (b.waist_cm && b.hip_cm)    ? calcRCQ(b.waist_cm, b.hip_cm)    : null;
+  const iceA = (a.waist_cm && a.height_cm) ? calcICE(a.waist_cm, a.height_cm) : null;
+  const iceB = (b.waist_cm && b.height_cm) ? calcICE(b.waist_cm, b.height_cm) : null;
 
   // All photo positions from both assessments
   const allPositions = [...new Set([
@@ -125,23 +134,49 @@ export function AssessmentCompareScreen({ navigation, route }: Props) {
 
         {/* Métricas */}
         <View className="mx-6 bg-brand-dark-2 rounded-2xl p-4 mb-4">
-          <Text className="text-white font-semibold mb-2">Composição corporal</Text>
-          <MetricRow label="Peso"      aVal={a.weight_kg}    bVal={b.weight_kg}    unit="kg" />
-          <MetricRow label="Altura"    aVal={a.height_cm}    bVal={b.height_cm}    unit="cm" />
-          <MetricRow label="IMC"       aVal={bmiA}           bVal={bmiB} />
-          <MetricRow label="% Gordura" aVal={a.body_fat_pct} bVal={b.body_fat_pct} unit="%" />
+          <Text className="text-white font-semibold mb-2">Antropometria</Text>
+          <MetricRow label="Peso"   aVal={a.weight_kg} bVal={b.weight_kg} unit="kg" />
+          <MetricRow label="Altura" aVal={a.height_cm} bVal={b.height_cm} unit="cm" />
+          <MetricRow label="IMC"    aVal={bmiA}        bVal={bmiB} />
         </View>
 
-        {(a.chest_cm || b.chest_cm || a.waist_cm || b.waist_cm || a.hip_cm || b.hip_cm ||
-          a.abdomen_cm || b.abdomen_cm || a.bicep_cm || b.bicep_cm || a.thigh_cm || b.thigh_cm) && (
+        {(rcqA || rcqB || iceA || iceB) && (
           <View className="mx-6 bg-brand-dark-2 rounded-2xl p-4 mb-4">
-            <Text className="text-white font-semibold mb-2">Circunferências</Text>
-            <MetricRow label="Peitoral" aVal={a.chest_cm}   bVal={b.chest_cm}   unit="cm" />
-            <MetricRow label="Cintura"  aVal={a.waist_cm}   bVal={b.waist_cm}   unit="cm" />
-            <MetricRow label="Quadril"  aVal={a.hip_cm}     bVal={b.hip_cm}     unit="cm" />
-            <MetricRow label="Abdômen"  aVal={a.abdomen_cm} bVal={b.abdomen_cm} unit="cm" />
-            <MetricRow label="Bíceps"   aVal={a.bicep_cm}   bVal={b.bicep_cm}   unit="cm" />
-            <MetricRow label="Coxa"     aVal={a.thigh_cm}   bVal={b.thigh_cm}   unit="cm" />
+            <Text className="text-white font-semibold mb-2">Índices</Text>
+            <MetricRow label="RCQ"      aVal={rcqA} bVal={rcqB} />
+            <MetricRow label="C-Estatura" aVal={iceA} bVal={iceB} />
+          </View>
+        )}
+
+        {(bcA || bcB || a.body_fat_pct != null || b.body_fat_pct != null) && (
+          <View className="mx-6 bg-brand-dark-2 rounded-2xl p-4 mb-4">
+            <Text className="text-white font-semibold mb-2">Composição corporal</Text>
+            <MetricRow label="Σ Dobras"  aVal={sigA}                      bVal={sigB}                      unit="mm" />
+            <MetricRow label="% Gordura" aVal={bcA?.fatPct ?? a.body_fat_pct} bVal={bcB?.fatPct ?? b.body_fat_pct} unit="%" />
+            <MetricRow label="% Músculo" aVal={bcA?.musclePct ?? null}    bVal={bcB?.musclePct ?? null}    unit="%" />
+            {(bcA?.fatKg != null || bcB?.fatKg != null) && (
+              <MetricRow label="Gordurakkg" aVal={bcA?.fatKg ?? null} bVal={bcB?.fatKg ?? null} unit="kg" />
+            )}
+            {(bcA?.leanKg != null || bcB?.leanKg != null) && (
+              <MetricRow label="Massa magra" aVal={bcA?.leanKg ?? null} bVal={bcB?.leanKg ?? null} unit="kg" />
+            )}
+          </View>
+        )}
+
+        {(a.chest_cm || b.chest_cm || a.waist_cm || b.waist_cm || a.hip_cm || b.hip_cm ||
+          a.abdomen_cm || b.abdomen_cm || a.bicep_cm || b.bicep_cm ||
+          a.braco_contraido_cm || b.braco_contraido_cm ||
+          a.thigh_cm || b.thigh_cm || a.coxa_medial_cm || b.coxa_medial_cm) && (
+          <View className="mx-6 bg-brand-dark-2 rounded-2xl p-4 mb-4">
+            <Text className="text-white font-semibold mb-2">Perimetria</Text>
+            <MetricRow label="Cintura"         aVal={a.waist_cm}           bVal={b.waist_cm}           unit="cm" />
+            <MetricRow label="Quadril"         aVal={a.hip_cm}             bVal={b.hip_cm}             unit="cm" />
+            <MetricRow label="Abdômen"         aVal={a.abdomen_cm}         bVal={b.abdomen_cm}         unit="cm" />
+            <MetricRow label="Peitoral"        aVal={a.chest_cm}           bVal={b.chest_cm}           unit="cm" />
+            <MetricRow label="Braço relaxado"  aVal={a.bicep_cm}           bVal={b.bicep_cm}           unit="cm" />
+            <MetricRow label="Braço contraído" aVal={a.braco_contraido_cm} bVal={b.braco_contraido_cm} unit="cm" />
+            <MetricRow label="Coxa proximal"   aVal={a.thigh_cm}           bVal={b.thigh_cm}           unit="cm" />
+            <MetricRow label="Coxa medial"     aVal={a.coxa_medial_cm}     bVal={b.coxa_medial_cm}     unit="cm" />
           </View>
         )}
 

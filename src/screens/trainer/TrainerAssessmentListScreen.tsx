@@ -29,6 +29,19 @@ export type AssessmentFull = {
   thigh_cm: number | null;
   skinfolds: string | null;
   notes: string | null;
+  // campos avançados
+  sex: 'M' | 'F' | null;
+  age_years: number | null;
+  skinfold_protocol: 'pollock3' | 'pollock7' | 'guedes' | null;
+  sf_peitoral: number | null;
+  sf_axilar_media: number | null;
+  sf_triceps: number | null;
+  sf_subescapular: number | null;
+  sf_abdominal: number | null;
+  sf_suprailiaca: number | null;
+  sf_coxa: number | null;
+  braco_contraido_cm: number | null;
+  coxa_medial_cm: number | null;
 };
 
 export type AssessmentPhoto = {

@@ -4,6 +4,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { StudentsStackParams } from '../../navigation/StudentsStack';
 import { AssessmentFull, AssessmentPhoto } from './TrainerAssessmentListScreen';
+import {
+  computeFromAssessment, sfSigma, calcRCQ, calcICE,
+  rcqRisk, iceRisk, PROTOCOL_LABELS, PROTOCOL_FIELDS,
+  Sex, Protocol,
+} from '../../lib/bodyComposition';
 
 type Props = {
   navigation: NativeStackNavigationProp<StudentsStackParams, 'AssessmentDetail'>;
@@ -22,10 +27,15 @@ function formatDate(iso: string) {
   });
 }
 
-function Row({ label, value, unit }: { label: string; value: number | null | string; unit?: string }) {
+function Row({ label, value, unit, last = false }: {
+  label: string; value: number | null | string; unit?: string; last?: boolean;
+}) {
   if (value == null || value === '') return null;
   return (
-    <View className="flex-row items-center justify-between py-2.5" style={{ borderBottomWidth: 1, borderBottomColor: '#2E3330' }}>
+    <View
+      className="flex-row items-center justify-between py-2.5"
+      style={{ borderBottomWidth: last ? 0 : 1, borderBottomColor: '#2E3330' }}
+    >
       <Text className="text-gray-400 text-sm">{label}</Text>
       <Text className="text-white text-sm font-semibold">
         {value}{unit ? ` ${unit}` : ''}
@@ -34,11 +44,55 @@ function Row({ label, value, unit }: { label: string; value: number | null | str
   );
 }
 
+function RiskRow({ label, value, risk, last = false }: {
+  label: string; value: string | null; risk: string | null; last?: boolean;
+}) {
+  if (!value) return null;
+  const color = !risk ? '#fff'
+    : (risk === 'Baixo' || risk === 'Ideal') ? '#8DC63F'
+    : (risk === 'Moderado' || risk === 'Atenção') ? '#f59e0b'
+    : '#ef4444';
+  return (
+    <View
+      className="flex-row items-center justify-between py-2.5"
+      style={{ borderBottomWidth: last ? 0 : 1, borderBottomColor: '#2E3330' }}
+    >
+      <Text className="text-gray-400 text-sm">{label}</Text>
+      <View className="items-end">
+        <Text className="text-white text-sm font-semibold">{value}</Text>
+        {risk && <Text style={{ color, fontSize: 11 }}>{risk}</Text>}
+      </View>
+    </View>
+  );
+}
+
 export function AssessmentDetailScreen({ navigation, route }: Props) {
   const { assessment: a, student, photos } = route.params;
-  const imc = bmi(a.weight_kg, a.height_cm);
 
-  // Group photos by position
+  const imc  = bmi(a.weight_kg, a.height_cm);
+  const bc   = computeFromAssessment(a);
+  const sigma = sfSigma(a);
+  const rcq  = (a.waist_cm && a.hip_cm)    ? calcRCQ(a.waist_cm, a.hip_cm)   : null;
+  const ice  = (a.waist_cm && a.height_cm) ? calcICE(a.waist_cm, a.height_cm) : null;
+  const sex  = a.sex as Sex | null;
+
+  const hasPerimetria = !!(
+    a.chest_cm || a.waist_cm || a.hip_cm || a.abdomen_cm ||
+    a.bicep_cm || a.braco_contraido_cm || a.thigh_cm || a.coxa_medial_cm
+  );
+
+  const protocol = a.skinfold_protocol as Protocol | null;
+  const sfFields = (protocol && sex) ? PROTOCOL_FIELDS[protocol][sex] : [];
+  const sfKeyMap: Record<string, number | null> = {
+    sfPeitoral:     a.sf_peitoral,
+    sfAxilarMedia:  a.sf_axilar_media,
+    sfTriceps:      a.sf_triceps,
+    sfSubescapular: a.sf_subescapular,
+    sfAbdominal:    a.sf_abdominal,
+    sfSuprailiaca:  a.sf_suprailiaca,
+    sfCoxa:         a.sf_coxa,
+  };
+
   const byPosition: Record<string, AssessmentPhoto[]> = {};
   for (const p of photos) {
     if (!byPosition[p.position]) byPosition[p.position] = [];
@@ -49,7 +103,6 @@ export function AssessmentDetailScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-brand-dark">
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header */}
         <View className="px-6 pt-4 pb-4">
           <TouchableOpacity className="mb-3" onPress={() => navigation.goBack()}>
             <Text className="text-brand-green text-sm">← Voltar</Text>
@@ -59,43 +112,104 @@ export function AssessmentDetailScreen({ navigation, route }: Props) {
         </View>
 
         <View className="px-6">
-          {/* Composição corporal */}
+          {/* Antropometria */}
           <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
-            <Text className="text-white font-semibold mb-2">Composição corporal</Text>
-            <Row label="Peso"       value={a.weight_kg}    unit="kg" />
-            <Row label="Altura"     value={a.height_cm}    unit="cm" />
-            <Row label="IMC"        value={imc} />
-            <Row label="% Gordura"  value={a.body_fat_pct} unit="%" />
+            <Text className="text-white font-semibold mb-2">Antropometria</Text>
+            <Row label="Sexo"   value={a.sex === 'M' ? 'Masculino' : a.sex === 'F' ? 'Feminino' : null} />
+            <Row label="Idade"  value={a.age_years} unit="anos" />
+            <Row label="Peso"   value={a.weight_kg} unit="kg" />
+            <Row label="Altura" value={a.height_cm} unit="cm" />
+            <Row label="IMC"    value={imc} last />
           </View>
 
-          {/* Circunferências */}
-          {(a.chest_cm || a.waist_cm || a.hip_cm || a.abdomen_cm || a.bicep_cm || a.thigh_cm) && (
+          {/* Índices */}
+          {(rcq || ice) && (
             <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
-              <Text className="text-white font-semibold mb-2">Circunferências</Text>
-              <Row label="Peitoral" value={a.chest_cm}   unit="cm" />
-              <Row label="Cintura"  value={a.waist_cm}   unit="cm" />
-              <Row label="Quadril"  value={a.hip_cm}     unit="cm" />
-              <Row label="Abdômen"  value={a.abdomen_cm} unit="cm" />
-              <Row label="Bíceps"   value={a.bicep_cm}   unit="cm" />
-              <Row label="Coxa"     value={a.thigh_cm}   unit="cm" />
+              <Text className="text-white font-semibold mb-2">Índices</Text>
+              <RiskRow
+                label="RCQ (cintura/quadril)"
+                value={rcq ? String(rcq) : null}
+                risk={rcq && sex ? rcqRisk(rcq, sex) : null}
+              />
+              <RiskRow
+                label="Índice cintura-estatura"
+                value={ice ? String(ice) : null}
+                risk={ice ? iceRisk(ice) : null}
+                last
+              />
+            </View>
+          )}
+
+          {/* Composição corporal */}
+          {(a.body_fat_pct != null || bc) && (
+            <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
+              <Text className="text-white font-semibold mb-2">Composição corporal</Text>
+              {protocol && (
+                <Row label="Protocolo" value={PROTOCOL_LABELS[protocol]} />
+              )}
+              {sigma != null && (
+                <Row label="Σ Dobras" value={sigma} unit="mm" />
+              )}
+              <Row label="% Gordura"   value={bc?.fatPct ?? a.body_fat_pct} unit="%" />
+              {bc && (
+                <>
+                  <Row label="% Músculo"   value={bc.musclePct} unit="%" />
+                  <Row label="% Resíduo"   value={bc.residualPct} unit="%" />
+                  {bc.fatKg  != null && <Row label="Massa gordurosa" value={bc.fatKg}  unit="kg" />}
+                  {bc.leanKg != null && <Row label="Massa magra"     value={bc.leanKg} unit="kg" last />}
+                </>
+              )}
+            </View>
+          )}
+
+          {/* Perimetria */}
+          {hasPerimetria && (
+            <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
+              <Text className="text-white font-semibold mb-2">Perimetria</Text>
+              <Row label="Cintura"        value={a.waist_cm}          unit="cm" />
+              <Row label="Quadril"        value={a.hip_cm}            unit="cm" />
+              <Row label="Abdômen"        value={a.abdomen_cm}        unit="cm" />
+              <Row label="Peitoral"       value={a.chest_cm}          unit="cm" />
+              <Row label="Braço relaxado" value={a.bicep_cm}          unit="cm" />
+              <Row label="Braço contraído" value={a.braco_contraido_cm} unit="cm" />
+              <Row label="Coxa proximal"  value={a.thigh_cm}          unit="cm" />
+              <Row label="Coxa medial"    value={a.coxa_medial_cm}    unit="cm" last />
             </View>
           )}
 
           {/* Dobras cutâneas */}
-          {a.skinfolds ? (
+          {sfFields.length > 0 && (
+            <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
+              <Text className="text-white font-semibold mb-2">
+                Dobras cutâneas{protocol ? ` — ${PROTOCOL_LABELS[protocol]}` : ''}
+              </Text>
+              {sfFields.map((f, i) => (
+                <Row
+                  key={f.key}
+                  label={f.label}
+                  value={sfKeyMap[f.key]}
+                  unit="mm"
+                  last={i === sfFields.length - 1}
+                />
+              ))}
+            </View>
+          )}
+
+          {/* Dobras (texto legado) */}
+          {a.skinfolds && !protocol && (
             <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
               <Text className="text-white font-semibold mb-2">Dobras cutâneas</Text>
               <Text className="text-gray-300 text-sm leading-5">{a.skinfolds}</Text>
             </View>
-          ) : null}
+          )}
 
           {/* Observações */}
-          {a.notes ? (
+          {a.notes && (
             <View className="bg-brand-dark-2 rounded-2xl p-4 mb-4">
               <Text className="text-white font-semibold mb-2">Observações</Text>
               <Text className="text-gray-300 text-sm leading-5">{a.notes}</Text>
             </View>
-          ) : null}
+          )}
 
           {/* Fotos */}
           {positions.length > 0 && (
