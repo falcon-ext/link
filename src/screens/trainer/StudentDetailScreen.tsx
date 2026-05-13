@@ -132,6 +132,14 @@ export function StudentDetailScreen({ navigation, route }: Props) {
             <Text className="text-white font-bold text-base">Histórico de Treinos</Text>
           </TouchableOpacity>
 
+          {/* Avaliações */}
+          <TouchableOpacity
+            className="bg-brand-dark-2 border border-brand-dark-3 rounded-2xl py-4 items-center mb-3 flex-row justify-center"
+            onPress={() => navigation.navigate('TrainerAssessmentList', { student })}
+          >
+            <Text className="text-white font-bold text-base">Avaliações Físicas</Text>
+          </TouchableOpacity>
+
           {/* Editar */}
           <TouchableOpacity
             className="bg-brand-green rounded-2xl py-4 items-center"

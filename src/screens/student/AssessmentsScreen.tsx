@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,29 +15,37 @@ type Assessment = {
   chest_cm: number | null;
   waist_cm: number | null;
   hip_cm: number | null;
+  abdomen_cm: number | null;
   bicep_cm: number | null;
   thigh_cm: number | null;
+  skinfolds: string | null;
   notes: string | null;
 };
 
-function formatDate(dateStr: string) {
-  const [y, m, d] = dateStr.split('-').map(Number);
+type Photo = { id: string; assessment_id: string; position: string; photo_url: string };
+
+const CHART_H = 80;
+const BAR_W   = 32;
+
+function formatDate(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
+    day: '2-digit', month: 'long', year: 'numeric',
   });
 }
 
-function Metric({ label, value, unit }: { label: string; value: number | null; unit: string }) {
+function bmi(w: number | null, h: number | null): string | null {
+  if (!w || !h) return null;
+  return (w / Math.pow(h / 100, 2)).toFixed(1);
+}
+
+function Chip({ label, value, unit }: { label: string; value: number | null; unit: string }) {
   if (value == null) return null;
   return (
-    <View className="items-center px-3">
-      <Text className="text-white font-bold text-base">
-        {value}
-        <Text className="text-gray-500 text-xs">{unit}</Text>
+    <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
+      <Text className="text-gray-400 text-xs">
+        {label} <Text className="text-white font-semibold">{value}{unit}</Text>
       </Text>
-      <Text className="text-gray-500 text-xs mt-0.5">{label}</Text>
     </View>
   );
 }
@@ -45,13 +53,10 @@ function Metric({ label, value, unit }: { label: string; value: number | null; u
 export function AssessmentsScreen() {
   const { profile } = useAuthStore();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [photoMap, setPhotoMap]       = useState<Record<string, Photo[]>>({});
+  const [loading, setLoading]         = useState(true);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAssessments();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadAssessments(); }, []));
 
   async function loadAssessments() {
     setLoading(true);
@@ -60,9 +65,34 @@ export function AssessmentsScreen() {
       .select('*')
       .eq('student_id', profile!.id)
       .order('assessed_at', { ascending: false });
-    setAssessments((data as Assessment[]) ?? []);
+
+    const list = (data as Assessment[]) ?? [];
+    setAssessments(list);
+
+    if (list.length > 0) {
+      const ids = list.map((a) => a.id);
+      const { data: photoData } = await supabase
+        .from('assessment_photos')
+        .select('*')
+        .in('assessment_id', ids);
+      const pm: Record<string, Photo[]> = {};
+      for (const p of (photoData ?? []) as Photo[]) {
+        if (!pm[p.assessment_id]) pm[p.assessment_id] = [];
+        pm[p.assessment_id].push(p);
+      }
+      setPhotoMap(pm);
+    }
     setLoading(false);
   }
+
+  // Weight chart — last 6 with weight, ascending
+  const chartPoints = assessments
+    .filter((a) => a.weight_kg != null)
+    .slice(0, 6)
+    .reverse();
+  const maxW = chartPoints.length > 0 ? Math.max(...chartPoints.map((a) => a.weight_kg!)) : 0;
+  const minW = chartPoints.length > 0 ? Math.min(...chartPoints.map((a) => a.weight_kg!)) : 0;
+  const range = maxW - minW || 1;
 
   if (loading) {
     return (
@@ -74,106 +104,140 @@ export function AssessmentsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-brand-dark">
-      <View className="px-6 pt-8 pb-4">
-        <Text className="text-white text-2xl font-bold">Avaliações</Text>
-        <Text className="text-gray-400 text-sm mt-1">
-          {assessments.length} avaliação{assessments.length !== 1 ? 'ões' : ''}
-        </Text>
-      </View>
-
-      {assessments.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="body-outline" size={56} color="#374151" />
-          <Text className="text-gray-400 text-lg font-semibold mt-4 text-center">
-            Nenhuma avaliação
-          </Text>
-          <Text className="text-gray-600 text-sm mt-2 text-center">
-            Seu personal ainda não registrou{'\n'}nenhuma avaliação física.
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-8 pb-4">
+          <Text className="text-white text-2xl font-bold">Avaliações</Text>
+          <Text className="text-gray-400 text-sm mt-1">
+            {assessments.length} avaliação{assessments.length !== 1 ? 'ões' : ''}
           </Text>
         </View>
-      ) : (
-        <FlatList
-          data={assessments}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
-          renderItem={({ item }) => {
-            const hasMainMetrics = item.weight_kg != null || item.height_cm != null || item.body_fat_pct != null;
-            const hasMeasures = item.chest_cm != null || item.waist_cm != null || item.hip_cm != null
-              || item.bicep_cm != null || item.thigh_cm != null;
 
-            return (
-              <View className="bg-brand-dark-2 rounded-2xl p-5 mb-4">
-                <Text className="text-brand-green text-xs font-semibold uppercase mb-4">
-                  {formatDate(item.assessed_at)}
-                </Text>
-
-                {hasMainMetrics && (
-                  <View className="flex-row justify-around bg-brand-dark rounded-xl p-4 mb-4">
-                    <Metric label="Peso" value={item.weight_kg} unit="kg" />
-                    {item.weight_kg != null && item.height_cm != null && (
-                      <View className="w-px bg-brand-dark-3" />
-                    )}
-                    <Metric label="Altura" value={item.height_cm} unit="cm" />
-                    {item.body_fat_pct != null && (
-                      <View className="w-px bg-brand-dark-3" />
-                    )}
-                    <Metric label="% Gordura" value={item.body_fat_pct} unit="%" />
+        {assessments.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-8 mt-16">
+            <Ionicons name="body-outline" size={56} color="#374151" />
+            <Text className="text-gray-400 text-lg font-semibold mt-4 text-center">
+              Nenhuma avaliação
+            </Text>
+            <Text className="text-gray-600 text-sm mt-2 text-center">
+              Seu personal ainda não registrou{'\n'}nenhuma avaliação física.
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Gráfico de peso */}
+            {chartPoints.length >= 2 && (
+              <View className="mx-6 bg-brand-dark-2 rounded-2xl p-4 mb-5">
+                <Text className="text-white font-semibold mb-3">Evolução de peso</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: CHART_H + 36 }}>
+                    {chartPoints.map((a, i) => {
+                      const barH = Math.max(8, ((a.weight_kg! - minW) / range) * CHART_H + 8);
+                      return (
+                        <View key={a.id} style={{ width: BAR_W, marginRight: i < chartPoints.length - 1 ? 8 : 0, alignItems: 'center' }}>
+                          <Text style={{ color: '#8DC63F', fontSize: 9, marginBottom: 2 }}>{a.weight_kg}kg</Text>
+                          <View style={{ width: BAR_W, height: barH, backgroundColor: i === chartPoints.length - 1 ? '#8DC63F' : '#2E5B1A', borderRadius: 4 }} />
+                          <Text style={{ color: '#6b7280', fontSize: 8, marginTop: 3, textAlign: 'center' }}>
+                            {a.assessed_at.slice(5).replace('-', '/')}
+                          </Text>
+                        </View>
+                      );
+                    })}
                   </View>
-                )}
-
-                {hasMeasures && (
-                  <View>
-                    <Text className="text-gray-500 text-xs uppercase font-semibold mb-2">
-                      Medidas
-                    </Text>
-                    <View className="flex-row flex-wrap">
-                      {item.chest_cm != null && (
-                        <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
-                          <Text className="text-gray-400 text-xs">
-                            Peit. <Text className="text-white font-semibold">{item.chest_cm}cm</Text>
-                          </Text>
-                        </View>
-                      )}
-                      {item.waist_cm != null && (
-                        <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
-                          <Text className="text-gray-400 text-xs">
-                            Cintura <Text className="text-white font-semibold">{item.waist_cm}cm</Text>
-                          </Text>
-                        </View>
-                      )}
-                      {item.hip_cm != null && (
-                        <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
-                          <Text className="text-gray-400 text-xs">
-                            Quadril <Text className="text-white font-semibold">{item.hip_cm}cm</Text>
-                          </Text>
-                        </View>
-                      )}
-                      {item.bicep_cm != null && (
-                        <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
-                          <Text className="text-gray-400 text-xs">
-                            Bíceps <Text className="text-white font-semibold">{item.bicep_cm}cm</Text>
-                          </Text>
-                        </View>
-                      )}
-                      {item.thigh_cm != null && (
-                        <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
-                          <Text className="text-gray-400 text-xs">
-                            Coxa <Text className="text-white font-semibold">{item.thigh_cm}cm</Text>
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                )}
-
-                {item.notes ? (
-                  <Text className="text-gray-500 text-xs mt-2 italic">{item.notes}</Text>
-                ) : null}
+                </ScrollView>
               </View>
-            );
-          }}
-        />
-      )}
+            )}
+
+            {/* Lista de avaliações */}
+            <View className="px-6">
+              {assessments.map((item) => {
+                const imc = bmi(item.weight_kg, item.height_cm);
+                const photos = photoMap[item.id] ?? [];
+                const hasCircumf = item.chest_cm || item.waist_cm || item.hip_cm ||
+                  item.abdomen_cm || item.bicep_cm || item.thigh_cm;
+
+                return (
+                  <View key={item.id} className="bg-brand-dark-2 rounded-2xl p-5 mb-4">
+                    <Text className="text-brand-green text-xs font-semibold uppercase mb-4">
+                      {formatDate(item.assessed_at)}
+                    </Text>
+
+                    {/* Métricas principais */}
+                    {(item.weight_kg || item.height_cm || item.body_fat_pct) && (
+                      <View className="flex-row justify-around bg-brand-dark rounded-xl p-4 mb-4">
+                        {item.weight_kg != null && (
+                          <View className="items-center px-2">
+                            <Text className="text-white font-bold text-base">{item.weight_kg}<Text className="text-gray-500 text-xs">kg</Text></Text>
+                            <Text className="text-gray-500 text-xs mt-0.5">Peso</Text>
+                          </View>
+                        )}
+                        {imc && (
+                          <>
+                            <View className="w-px bg-brand-dark-3" />
+                            <View className="items-center px-2">
+                              <Text className="text-white font-bold text-base">{imc}</Text>
+                              <Text className="text-gray-500 text-xs mt-0.5">IMC</Text>
+                            </View>
+                          </>
+                        )}
+                        {item.body_fat_pct != null && (
+                          <>
+                            <View className="w-px bg-brand-dark-3" />
+                            <View className="items-center px-2">
+                              <Text className="text-white font-bold text-base">{item.body_fat_pct}<Text className="text-gray-500 text-xs">%</Text></Text>
+                              <Text className="text-gray-500 text-xs mt-0.5">Gordura</Text>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Circunferências */}
+                    {hasCircumf && (
+                      <View className="mb-3">
+                        <Text className="text-gray-500 text-xs uppercase font-semibold mb-2">Medidas</Text>
+                        <View className="flex-row flex-wrap">
+                          <Chip label="Peitoral" value={item.chest_cm}   unit="cm" />
+                          <Chip label="Cintura"  value={item.waist_cm}   unit="cm" />
+                          <Chip label="Quadril"  value={item.hip_cm}     unit="cm" />
+                          <Chip label="Abdômen"  value={item.abdomen_cm} unit="cm" />
+                          <Chip label="Bíceps"   value={item.bicep_cm}   unit="cm" />
+                          <Chip label="Coxa"     value={item.thigh_cm}   unit="cm" />
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Dobras */}
+                    {item.skinfolds ? (
+                      <Text className="text-gray-500 text-xs mb-3 italic">{item.skinfolds}</Text>
+                    ) : null}
+
+                    {/* Observações */}
+                    {item.notes ? (
+                      <Text className="text-gray-500 text-xs italic mb-3">{item.notes}</Text>
+                    ) : null}
+
+                    {/* Fotos */}
+                    {photos.length > 0 && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        {photos.map((photo) => (
+                          <View key={photo.id} className="mr-3">
+                            <Image
+                              source={{ uri: photo.photo_url }}
+                              style={{ width: 100, height: 133, borderRadius: 10 }}
+                              resizeMode="cover"
+                            />
+                            <Text className="text-gray-600 text-xs text-center mt-1">{photo.position}</Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

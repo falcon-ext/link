@@ -13,6 +13,10 @@ import { SheetDetailScreen } from '../screens/trainer/SheetDetailScreen';
 import { ExercisePickerScreen } from '../screens/trainer/ExercisePickerScreen';
 import { AddExerciseParamsScreen } from '../screens/trainer/AddExerciseParamsScreen';
 import { EditSheetExerciseScreen } from '../screens/trainer/EditSheetExerciseScreen';
+import { TrainerAssessmentListScreen, AssessmentFull, AssessmentPhoto } from '../screens/trainer/TrainerAssessmentListScreen';
+import { NewAssessmentScreen } from '../screens/trainer/NewAssessmentScreen';
+import { AssessmentDetailScreen } from '../screens/trainer/AssessmentDetailScreen';
+import { AssessmentCompareScreen } from '../screens/trainer/AssessmentCompareScreen';
 import { Profile, Program, WorkoutSheet, Exercise, SheetExercise } from '../types';
 
 export type StudentsStackParams = {
@@ -23,6 +27,10 @@ export type StudentsStackParams = {
   StudentHistory: { student: Profile };
   SessionDetail: { logId: string; sheetName: string; finishedAt: string; studentId: string };
   ExerciseEvolution: { studentId: string; exerciseId: string; exerciseName: string };
+  TrainerAssessmentList: { student: Profile };
+  NewAssessment: { student: Profile };
+  AssessmentDetail: { assessment: AssessmentFull; student: Profile; photos: AssessmentPhoto[] };
+  AssessmentCompare: { studentId: string; assessmentAId: string; assessmentBId: string };
   ProgramsList: { student: Profile };
   CreateProgram: { student: Profile };
   ProgramDetail: { program: Program; student: Profile };
@@ -44,6 +52,10 @@ export function StudentsStack() {
       <Stack.Screen name="StudentHistory" component={StudentHistoryScreen} />
       <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
       <Stack.Screen name="ExerciseEvolution" component={ExerciseEvolutionScreen} />
+      <Stack.Screen name="TrainerAssessmentList" component={TrainerAssessmentListScreen} />
+      <Stack.Screen name="NewAssessment" component={NewAssessmentScreen} />
+      <Stack.Screen name="AssessmentDetail" component={AssessmentDetailScreen} />
+      <Stack.Screen name="AssessmentCompare" component={AssessmentCompareScreen} />
       <Stack.Screen name="ProgramsList" component={ProgramsScreen} />
       <Stack.Screen name="CreateProgram" component={CreateProgramScreen} />
       <Stack.Screen name="ProgramDetail" component={ProgramDetailScreen} />
