@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { StudentsStackParams } from '../../navigation/StudentsStack';
 import { supabase } from '../../lib/supabase';
+import { sendPushToStudent } from '../../lib/notifications';
 
 type Props = {
   navigation: NativeStackNavigationProp<StudentsStackParams, 'CreateProgram'>;
@@ -23,12 +24,19 @@ export function CreateProgramScreen({ navigation, route }: Props) {
       return;
     }
     setSaving(true);
-    await supabase.from('programs').insert({
+    const { error } = await supabase.from('programs').insert({
       student_id: student.id,
       name: name.trim(),
       is_active: isActive,
     });
     setSaving(false);
+    if (!error) {
+      sendPushToStudent(
+        student.id,
+        'Nova ficha de treino! 🏋️',
+        `Seu personal criou a ficha "${name.trim()}". Acesse o app para ver.`,
+      ).catch(() => {});
+    }
     navigation.goBack();
   }
 

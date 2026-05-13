@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
-  Image, Alert,
+  Image, Alert, Modal, Switch, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { getLevelInfo, getLevelTitle } from '../../lib/gamification';
+import { scheduleWorkoutReminder, cancelWorkoutReminder } from '../../lib/notifications';
 
 type FeedPost = {
   id: string;
@@ -48,11 +50,17 @@ export function FeedScreen() {
   const { profile } = useAuthStore();
   const navigation = useNavigation<any>();
 
-  const [loading, setLoading] = useState(true);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [likeMap, setLikeMap] = useState<Record<string, LikeState>>({});
+  const [loading, setLoading]   = useState(true);
+  const [posts, setPosts]       = useState<FeedPost[]>([]);
+  const [likeMap, setLikeMap]   = useState<Record<string, LikeState>>({});
   const [workoutCount, setWorkoutCount] = useState(0);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploading, setUploading]       = useState<string | null>(null);
+
+  const [reminderModal, setReminderModal]     = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour]       = useState('07');
+  const [reminderMinute, setReminderMinute]   = useState('00');
+  const [savingReminder, setSavingReminder]   = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -162,6 +170,47 @@ export function FeedScreen() {
     }
   }
 
+  async function openReminderModal() {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const daily = scheduled.find(
+      (n) => (n.trigger as any)?.type === 'daily' || (n.trigger as any)?.repeats === true
+    );
+    if (daily) {
+      const trigger = daily.trigger as any;
+      setReminderEnabled(true);
+      setReminderHour(String(trigger.hour ?? 7).padStart(2, '0'));
+      setReminderMinute(String(trigger.minute ?? 0).padStart(2, '0'));
+    } else {
+      setReminderEnabled(false);
+      setReminderHour('07');
+      setReminderMinute('00');
+    }
+    setReminderModal(true);
+  }
+
+  async function saveReminder() {
+    const h = parseInt(reminderHour, 10);
+    const m = parseInt(reminderMinute, 10);
+    if (reminderEnabled && (isNaN(h) || h < 0 || h > 23 || isNaN(m) || m < 0 || m > 59)) {
+      Alert.alert('Horário inválido', 'Digite um horário válido (0–23 para hora, 0–59 para minuto).');
+      return;
+    }
+    setSavingReminder(true);
+    if (reminderEnabled) {
+      await scheduleWorkoutReminder(h, m);
+    } else {
+      await cancelWorkoutReminder();
+    }
+    setSavingReminder(false);
+    setReminderModal(false);
+    Alert.alert(
+      reminderEnabled ? 'Lembrete ativado! 💪' : 'Lembrete desativado',
+      reminderEnabled
+        ? `Você receberá um lembrete todos os dias às ${reminderHour}:${reminderMinute}.`
+        : 'O lembrete de treino foi cancelado.',
+    );
+  }
+
   // Checkins de hoje — um por aluno (deduplicado)
   const todayCheckins = Object.values(
     posts
@@ -186,8 +235,11 @@ export function FeedScreen() {
   return (
     <SafeAreaView className="flex-1 bg-brand-dark">
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="px-6 pt-8 pb-4">
+        <View className="px-6 pt-8 pb-4 flex-row items-center justify-between">
           <Text className="text-white text-2xl font-bold">Feed</Text>
+          <TouchableOpacity onPress={openReminderModal} className="p-1">
+            <Ionicons name="notifications-outline" size={22} color="#6b7280" />
+          </TouchableOpacity>
         </View>
 
         {/* Level bar */}
@@ -362,6 +414,78 @@ export function FeedScreen() {
           })
         )}
       </ScrollView>
+
+      {/* Reminder modal */}
+      <Modal visible={reminderModal} animationType="slide" transparent>
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View className="bg-brand-dark rounded-t-3xl px-6 pt-6 pb-10">
+              <View className="flex-row items-center justify-between mb-6">
+                <Text className="text-white text-xl font-bold">Lembrete de treino</Text>
+                <TouchableOpacity onPress={() => setReminderModal(false)}>
+                  <Ionicons name="close" size={24} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="bg-brand-dark-2 rounded-2xl p-4 flex-row items-center justify-between mb-5">
+                <View>
+                  <Text className="text-white font-medium">Ativar lembrete diário</Text>
+                  <Text className="text-gray-500 text-xs mt-0.5">
+                    Receba um aviso no horário escolhido
+                  </Text>
+                </View>
+                <Switch
+                  value={reminderEnabled}
+                  onValueChange={setReminderEnabled}
+                  trackColor={{ false: '#374151', true: '#8DC63F' }}
+                  thumbColor="#fff"
+                />
+              </View>
+
+              {reminderEnabled && (
+                <View className="mb-6">
+                  <Text className="text-sm font-medium text-gray-400 mb-3">Horário</Text>
+                  <View className="flex-row items-center justify-center">
+                    <TextInput
+                      className="bg-brand-dark-2 border border-brand-dark-3 rounded-xl text-white text-3xl font-bold text-center"
+                      style={{ width: 80, paddingVertical: 12 }}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      value={reminderHour}
+                      onChangeText={setReminderHour}
+                      placeholder="07"
+                      placeholderTextColor="#4B5563"
+                    />
+                    <Text className="text-white text-3xl font-bold mx-3">:</Text>
+                    <TextInput
+                      className="bg-brand-dark-2 border border-brand-dark-3 rounded-xl text-white text-3xl font-bold text-center"
+                      style={{ width: 80, paddingVertical: 12 }}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      value={reminderMinute}
+                      onChangeText={setReminderMinute}
+                      placeholder="00"
+                      placeholderTextColor="#4B5563"
+                    />
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                className={`rounded-xl py-4 items-center ${savingReminder ? 'bg-brand-green-dark' : 'bg-brand-green'}`}
+                onPress={saveReminder}
+                disabled={savingReminder}
+              >
+                {savingReminder ? (
+                  <ActivityIndicator color="#1A1D1C" />
+                ) : (
+                  <Text className="text-brand-dark font-bold text-base">Salvar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -4,6 +4,7 @@ import { supabase } from './src/lib/supabase';
 import { useAuthStore } from './src/store/authStore';
 import { RootNavigator } from './src/navigation';
 import { Profile } from './src/types';
+import { registerPushToken } from './src/lib/notifications';
 
 export default function App() {
   const { setProfile, setLoading } = useAuthStore();
@@ -17,6 +18,9 @@ export default function App() {
           .eq('id', session.user.id)
           .single();
         setProfile(data as Profile);
+        if ((data as Profile)?.role === 'student') {
+          registerPushToken(session.user.id).catch(() => {});
+        }
       }
       setLoading(false);
     });
@@ -29,6 +33,9 @@ export default function App() {
           .eq('id', session.user.id)
           .single();
         setProfile(data as Profile);
+        if ((data as Profile)?.role === 'student') {
+          registerPushToken(session.user.id).catch(() => {});
+        }
       } else {
         setProfile(null);
       }

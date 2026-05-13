@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { StudentsStackParams } from '../../navigation/StudentsStack';
 import { supabase } from '../../lib/supabase';
 import { uploadToCloudinary } from '../../lib/cloudinary';
+import { sendPushToStudent } from '../../lib/notifications';
 
 type Props = {
   navigation: NativeStackNavigationProp<StudentsStackParams, 'NewAssessment'>;
@@ -170,6 +171,11 @@ export function NewAssessmentScreen({ navigation, route }: Props) {
         await supabase.from('assessment_photos').insert(photoInserts);
       }
 
+      sendPushToStudent(
+        student.id,
+        'Nova avaliação registrada 📊',
+        'Seu personal registrou uma nova avaliação física. Confira no app!',
+      ).catch(() => {});
       Alert.alert('Salvo!', 'Avaliação registrada com sucesso.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
