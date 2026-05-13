@@ -62,6 +62,15 @@ export function FeedScreen() {
   const [reminderMinute, setReminderMinute]   = useState('00');
   const [savingReminder, setSavingReminder]   = useState(false);
 
+  // Post manual
+  const [postModal, setPostModal]           = useState(false);
+  const [postSheets, setPostSheets]         = useState<{ id: string; name: string }[]>([]);
+  const [postSelectedSheet, setPostSelectedSheet] = useState<{ id: string; name: string } | null>(null);
+  const [postPhotoUri, setPostPhotoUri]     = useState<string | null>(null);
+  const [postPhotoUrl, setPostPhotoUrl]     = useState<string | null>(null);
+  const [uploadingPostPhoto, setUploadingPostPhoto] = useState(false);
+  const [savingPost, setSavingPost]         = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       loadFeed();
@@ -170,6 +179,83 @@ export function FeedScreen() {
     }
   }
 
+  async function openPostModal() {
+    setPostSelectedSheet(null);
+    setPostPhotoUri(null);
+    setPostPhotoUrl(null);
+
+    // Carrega treinos da ficha ativa
+    const { data: prog } = await supabase
+      .from('programs')
+      .select('id')
+      .eq('student_id', profile!.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (prog) {
+      const { data: sheetData } = await supabase
+        .from('workout_sheets')
+        .select('id, name')
+        .eq('program_id', prog.id)
+        .order('order_index');
+      setPostSheets((sheetData as { id: string; name: string }[]) ?? []);
+    } else {
+      setPostSheets([]);
+    }
+    setPostModal(true);
+  }
+
+  async function pickPostPhoto() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setPostPhotoUri(result.assets[0].uri);
+    setPostPhotoUrl(null);
+    setUploadingPostPhoto(true);
+    try {
+      const url = await uploadToCloudinary(result.assets[0].uri, 'image');
+      setPostPhotoUrl(url);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível enviar a foto.');
+      setPostPhotoUri(null);
+    } finally {
+      setUploadingPostPhoto(false);
+    }
+  }
+
+  async function handleManualPost() {
+    setSavingPost(true);
+    try {
+      const { data: post } = await supabase
+        .from('feed_posts')
+        .insert({
+          student_id: profile!.id,
+          student_name: profile!.name,
+          student_avatar_url: profile!.avatar_url ?? null,
+          sheet_name: postSelectedSheet?.name ?? null,
+          photo_url: postPhotoUrl ?? null,
+        })
+        .select()
+        .single();
+
+      if (post) {
+        setPosts((prev) => [post as FeedPost, ...prev]);
+        setLikeMap((prev) => ({ ...prev, [(post as FeedPost).id]: { count: 0, liked: false } }));
+      }
+      setPostModal(false);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível criar o post.');
+    } finally {
+      setSavingPost(false);
+    }
+  }
+
   async function openReminderModal() {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     const daily = scheduled.find(
@@ -237,9 +323,14 @@ export function FeedScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="px-6 pt-8 pb-4 flex-row items-center justify-between">
           <Text className="text-white text-2xl font-bold">Feed</Text>
-          <TouchableOpacity onPress={openReminderModal} className="p-1">
-            <Ionicons name="notifications-outline" size={22} color="#6b7280" />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity onPress={openPostModal} className="p-1">
+              <Ionicons name="add-circle-outline" size={26} color="#8DC63F" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={openReminderModal} className="p-1">
+              <Ionicons name="notifications-outline" size={22} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Level bar */}
@@ -414,6 +505,77 @@ export function FeedScreen() {
           })
         )}
       </ScrollView>
+
+      {/* Post manual modal */}
+      <Modal visible={postModal} animationType="slide" transparent>
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View className="bg-brand-dark rounded-t-3xl px-6 pt-6 pb-10">
+              <View className="flex-row items-center justify-between mb-5">
+                <Text className="text-white text-xl font-bold">Novo post</Text>
+                <TouchableOpacity onPress={() => setPostModal(false)}>
+                  <Ionicons name="close" size={24} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Seletor de treino */}
+              <Text className="text-sm font-medium text-gray-400 mb-2">O que você está treinando?</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                {[{ id: '', name: 'Treino livre' }, ...postSheets].map((s) => {
+                  const selected = postSelectedSheet?.id === s.id || (!postSelectedSheet && s.id === '');
+                  return (
+                    <TouchableOpacity
+                      key={s.id || 'free'}
+                      onPress={() => setPostSelectedSheet(s.id ? s : null)}
+                      className="rounded-full px-4 py-2 mr-2"
+                      style={{
+                        backgroundColor: selected ? '#8DC63F' : '#242827',
+                        flexShrink: 0,
+                        flexGrow: 0,
+                      }}
+                    >
+                      <Text
+                        className="text-sm font-semibold"
+                        style={{ color: selected ? '#1A1D1C' : '#6b7280' }}
+                      >
+                        {s.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Foto */}
+              <TouchableOpacity
+                onPress={pickPostPhoto}
+                disabled={uploadingPostPhoto}
+                className="bg-brand-dark-2 rounded-2xl p-4 flex-row items-center mb-6"
+              >
+                {uploadingPostPhoto ? (
+                  <ActivityIndicator color="#8DC63F" size="small" style={{ marginRight: 10 }} />
+                ) : (
+                  <Ionicons name="camera-outline" size={20} color={postPhotoUri ? '#8DC63F' : '#6b7280'} style={{ marginRight: 10 }} />
+                )}
+                <Text style={{ color: postPhotoUri ? '#8DC63F' : '#6b7280', fontSize: 14 }}>
+                  {postPhotoUri ? 'Foto selecionada ✓ (toque para trocar)' : 'Adicionar foto (opcional)'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`rounded-xl py-4 items-center ${savingPost || uploadingPostPhoto ? 'bg-brand-green-dark' : 'bg-brand-green'}`}
+                onPress={handleManualPost}
+                disabled={savingPost || uploadingPostPhoto}
+              >
+                {savingPost ? (
+                  <ActivityIndicator color="#1A1D1C" />
+                ) : (
+                  <Text className="text-brand-dark font-bold text-base">Publicar no feed</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
 
       {/* Reminder modal */}
       <Modal visible={reminderModal} animationType="slide" transparent>

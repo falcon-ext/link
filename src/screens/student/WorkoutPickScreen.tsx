@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,9 +15,10 @@ type Props = {
 
 export function WorkoutPickScreen({ navigation }: Props) {
   const { profile } = useAuthStore();
-  const [program, setProgram] = useState<Program | null>(null);
-  const [sheets, setSheets] = useState<WorkoutSheet[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [program, setProgram]       = useState<Program | null>(null);
+  const [sheets, setSheets]         = useState<WorkoutSheet[]>([]);
+  const [trainedToday, setTrainedToday] = useState<Set<string>>(new Set());
+  const [loading, setLoading]       = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,8 +47,20 @@ export function WorkoutPickScreen({ navigation }: Props) {
         .eq('program_id', prog.id)
         .order('order_index');
       setSheets((sheetData as WorkoutSheet[]) ?? []);
+
+      // Quais treinos já foram feitos hoje?
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { data: todayLogs } = await supabase
+        .from('workout_logs')
+        .select('sheet_id')
+        .eq('student_id', profile!.id)
+        .gte('finished_at', todayStart.toISOString())
+        .not('finished_at', 'is', null);
+      setTrainedToday(new Set((todayLogs ?? []).map((l: any) => l.sheet_id)));
     } else {
       setSheets([]);
+      setTrainedToday(new Set());
     }
     setLoading(false);
   }
@@ -81,23 +94,46 @@ export function WorkoutPickScreen({ navigation }: Props) {
             Escolha o treino de hoje
           </Text>
 
-          {sheets.map((sheet, index) => (
-            <TouchableOpacity
-              key={sheet.id}
-              className="bg-brand-dark-2 rounded-2xl p-5 mb-4 flex-row items-center"
-              onPress={() => navigation.navigate('WorkoutExecution', { sheet, program: program! })}
-            >
-              <View className="w-12 h-12 rounded-full bg-brand-green/20 items-center justify-center mr-4">
-                <Text className="text-brand-green text-lg font-bold">
-                  {String.fromCharCode(65 + index)}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-base">{sheet.name}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color="#8DC63F" />
-            </TouchableOpacity>
-          ))}
+          {sheets.map((sheet, index) => {
+            const done = trainedToday.has(sheet.id);
+            return (
+              <TouchableOpacity
+                key={sheet.id}
+                className="bg-brand-dark-2 rounded-2xl p-5 mb-4 flex-row items-center"
+                style={{ opacity: done ? 0.55 : 1 }}
+                onPress={() => {
+                  if (done) {
+                    Alert.alert(
+                      'Treino já realizado',
+                      `Você já fez "${sheet.name}" hoje. Volte amanhã! 💪`,
+                    );
+                    return;
+                  }
+                  navigation.navigate('WorkoutExecution', { sheet, program: program! });
+                }}
+              >
+                <View
+                  className="w-12 h-12 rounded-full items-center justify-center mr-4"
+                  style={{ backgroundColor: done ? '#2E3330' : '#8DC63F22' }}
+                >
+                  {done ? (
+                    <Ionicons name="checkmark" size={22} color="#8DC63F" />
+                  ) : (
+                    <Text className="text-brand-green text-lg font-bold">
+                      {String.fromCharCode(65 + index)}
+                    </Text>
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-bold text-base">{sheet.name}</Text>
+                  {done && (
+                    <Text className="text-brand-green text-xs mt-0.5">Concluído hoje ✓</Text>
+                  )}
+                </View>
+                {!done && <Ionicons name="chevron-forward" size={22} color="#8DC63F" />}
+              </TouchableOpacity>
+            );
+          })}
 
           {sheets.length === 0 && (
             <View className="items-center mt-8">
