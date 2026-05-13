@@ -3,6 +3,9 @@ import { StudentsScreen } from '../screens/trainer/StudentsScreen';
 import { StudentDetailScreen } from '../screens/trainer/StudentDetailScreen';
 import { EditStudentScreen } from '../screens/trainer/EditStudentScreen';
 import { CreateStudentScreen } from '../screens/trainer/CreateStudentScreen';
+import { StudentHistoryScreen } from '../screens/trainer/StudentHistoryScreen';
+import { SessionDetailScreen } from '../screens/trainer/SessionDetailScreen';
+import { ExerciseEvolutionScreen } from '../screens/trainer/ExerciseEvolutionScreen';
 import { ProgramsScreen } from '../screens/trainer/ProgramsScreen';
 import { CreateProgramScreen } from '../screens/trainer/CreateProgramScreen';
 import { ProgramDetailScreen } from '../screens/trainer/ProgramDetailScreen';
@@ -17,6 +20,9 @@ export type StudentsStackParams = {
   StudentDetail: { student: Profile };
   EditStudent: { student: Profile };
   CreateStudent: undefined;
+  StudentHistory: { student: Profile };
+  SessionDetail: { logId: string; sheetName: string; finishedAt: string; studentId: string };
+  ExerciseEvolution: { studentId: string; exerciseId: string; exerciseName: string };
   ProgramsList: { student: Profile };
   CreateProgram: { student: Profile };
   ProgramDetail: { program: Program; student: Profile };
@@ -35,6 +41,9 @@ export function StudentsStack() {
       <Stack.Screen name="StudentDetail" component={StudentDetailScreen} />
       <Stack.Screen name="EditStudent" component={EditStudentScreen} />
       <Stack.Screen name="CreateStudent" component={CreateStudentScreen} />
+      <Stack.Screen name="StudentHistory" component={StudentHistoryScreen} />
+      <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
+      <Stack.Screen name="ExerciseEvolution" component={ExerciseEvolutionScreen} />
       <Stack.Screen name="ProgramsList" component={ProgramsScreen} />
       <Stack.Screen name="CreateProgram" component={CreateProgramScreen} />
       <Stack.Screen name="ProgramDetail" component={ProgramDetailScreen} />
