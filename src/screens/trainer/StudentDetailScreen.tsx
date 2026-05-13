@@ -69,7 +69,7 @@ export function StudentDetailScreen({ navigation, route }: Props) {
             <Text className="text-brand-green text-sm">← Voltar</Text>
           </TouchableOpacity>
 
-          <Avatar name={student.name} size={80} />
+          <Avatar name={student.name} uri={student.avatar_url} size={80} />
           <Text className="text-white text-xl font-bold mt-3">{student.name}</Text>
           <Text className="text-gray-400 text-sm mt-1">{student.email}</Text>
 

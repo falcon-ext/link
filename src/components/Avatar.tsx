@@ -1,4 +1,4 @@
-import { View, Text } from 'react-native';
+import { View, Text, Image } from 'react-native';
 
 const COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
@@ -13,10 +13,23 @@ function colorFromName(name: string) {
 
 interface Props {
   name: string;
+  uri?: string | null;
   size?: number;
 }
 
-export function Avatar({ name, size = 48 }: Props) {
+export function Avatar({ name, uri, size = 48 }: Props) {
+  const radius = size / 2;
+
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, borderRadius: radius }}
+        resizeMode="cover"
+      />
+    );
+  }
+
   const initials = name
     .split(' ')
     .slice(0, 2)
@@ -29,7 +42,7 @@ export function Avatar({ name, size = 48 }: Props) {
 
   return (
     <View
-      style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg }}
+      style={{ width: size, height: size, borderRadius: radius, backgroundColor: bg }}
       className="items-center justify-center"
     >
       <Text style={{ fontSize, color: '#fff', fontWeight: '700' }}>{initials}</Text>

@@ -77,7 +77,7 @@ export function StudentsScreen({ navigation }: Props) {
               className="flex-row items-center bg-brand-dark-2 rounded-2xl p-4 mb-3"
               onPress={() => navigation.navigate('StudentDetail', { student: item })}
             >
-              <Avatar name={item.name} size={48} />
+              <Avatar name={item.name} uri={item.avatar_url} size={48} />
               <View className="flex-1 ml-3">
                 <Text className="text-white font-semibold text-base">{item.name}</Text>
                 <Text className="text-gray-400 text-sm mt-0.5">{item.email}</Text>
