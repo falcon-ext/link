@@ -1,4 +1,4 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '../store/authStore';
@@ -21,7 +21,7 @@ export function RootNavigator() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer theme={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: '#1A1D1C' } }}>
         {!profile ? (
           <AuthStack />
         ) : profile.role === 'trainer' ? (

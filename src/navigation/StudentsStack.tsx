@@ -44,7 +44,7 @@ const Stack = createNativeStackNavigator<StudentsStackParams>();
 
 export function StudentsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: '#1A1D1C' } }}>
       <Stack.Screen name="StudentsList" component={StudentsScreen} />
       <Stack.Screen name="StudentDetail" component={StudentDetailScreen} />
       <Stack.Screen name="EditStudent" component={EditStudentScreen} />

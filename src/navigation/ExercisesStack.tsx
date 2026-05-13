@@ -15,7 +15,7 @@ const Stack = createNativeStackNavigator<ExercisesStackParams>();
 
 export function ExercisesStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: '#1A1D1C' } }}>
       <Stack.Screen name="ExercisesList" component={ExercisesScreen} />
       <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
       <Stack.Screen name="CreateExercise" component={CreateExerciseScreen} />

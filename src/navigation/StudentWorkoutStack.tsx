@@ -20,7 +20,7 @@ const Stack = createNativeStackNavigator<StudentWorkoutStackParams>();
 
 export function StudentWorkoutStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: '#1A1D1C' } }}>
       <Stack.Screen name="WorkoutPick" component={WorkoutPickScreen} />
       <Stack.Screen name="WorkoutExecution" component={WorkoutExecutionScreen} />
       <Stack.Screen name="WorkoutSummary" component={WorkoutSummaryScreen} />

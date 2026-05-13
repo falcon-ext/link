@@ -35,6 +35,7 @@ export function TrainerTabs() {
         return {
           headerShown: false,
           animation: 'fade',
+          sceneStyle: { backgroundColor: '#1A1D1C' },
           tabBarActiveTintColor: '#8DC63F',
           tabBarInactiveTintColor: '#6b7280',
           tabBarStyle: {
