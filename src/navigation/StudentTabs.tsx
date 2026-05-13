@@ -1,11 +1,12 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StudentHomeScreen } from '../screens/student/StudentHomeScreen';
+import { FeedScreen } from '../screens/student/FeedScreen';
 import { StudentWorkoutStack } from './StudentWorkoutStack';
 import { HistoryScreen } from '../screens/student/HistoryScreen';
 import { AssessmentsScreen } from '../screens/student/AssessmentsScreen';
 import { StudentTipsScreen } from '../screens/student/StudentTipsScreen';
+import { ConquistasScreen } from '../screens/student/ConquistasScreen';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -18,11 +19,12 @@ const tabs: {
   icon: IoniconsName;
   iconActive: IoniconsName;
 }[] = [
-  { name: 'Home',        label: 'Início',    component: StudentHomeScreen,  icon: 'home-outline',    iconActive: 'home' },
-  { name: 'Workout',     label: 'Treino',    component: StudentWorkoutStack, icon: 'fitness-outline', iconActive: 'fitness' },
-  { name: 'History',     label: 'Histórico', component: HistoryScreen,      icon: 'time-outline',    iconActive: 'time' },
-  { name: 'Assessments', label: 'Avaliações',component: AssessmentsScreen,  icon: 'body-outline',    iconActive: 'body' },
-  { name: 'Tips',        label: 'Dicas',     component: StudentTipsScreen,  icon: 'bulb-outline',    iconActive: 'bulb' },
+  { name: 'Home',        label: 'Feed',       component: FeedScreen,          icon: 'people-outline',  iconActive: 'people'  },
+  { name: 'Workout',     label: 'Treino',     component: StudentWorkoutStack, icon: 'fitness-outline', iconActive: 'fitness' },
+  { name: 'History',     label: 'Histórico',  component: HistoryScreen,       icon: 'time-outline',    iconActive: 'time'    },
+  { name: 'Conquistas',  label: 'Conquistas', component: ConquistasScreen,    icon: 'trophy-outline',  iconActive: 'trophy'  },
+  { name: 'Assessments', label: 'Avaliações', component: AssessmentsScreen,   icon: 'body-outline',    iconActive: 'body'    },
+  { name: 'Tips',        label: 'Dicas',      component: StudentTipsScreen,   icon: 'bulb-outline',    iconActive: 'bulb'    },
 ];
 
 export function StudentTabs() {

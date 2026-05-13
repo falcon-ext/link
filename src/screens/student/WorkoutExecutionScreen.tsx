@@ -109,6 +109,8 @@ export function WorkoutExecutionScreen({ navigation, route }: Props) {
             .select()
             .single();
 
+          let postId: string | undefined;
+
           if (log) {
             const setLogs = [];
             for (const ex of exercises) {
@@ -127,14 +129,29 @@ export function WorkoutExecutionScreen({ navigation, route }: Props) {
             if (setLogs.length > 0) {
               await supabase.from('set_logs').insert(setLogs);
             }
+
+            // Auto check-in no feed
+            const { data: post } = await supabase
+              .from('feed_posts')
+              .insert({
+                student_id: profile!.id,
+                workout_log_id: log.id,
+                student_name: profile!.name,
+                student_avatar_url: profile!.avatar_url ?? null,
+                sheet_name: sheet.name,
+              })
+              .select('id')
+              .single();
+            postId = post?.id ?? undefined;
           }
 
           setSaving(false);
           navigation.replace('WorkoutSummary', {
             sheetName: sheet.name,
-            duration: Math.floor((Date.now() - startedAt.current) / 1000),
+            duration,
             setsCompleted: doneSets,
             exercisesTotal: exercises.length,
+            postId,
           });
         },
       },

@@ -47,7 +47,7 @@ export function LoginScreen({ navigation }: Props) {
           {/* Logo */}
           <View className="items-center mb-12">
             <Image
-              source={require('../../../PowerLink.png')}
+              source={require('../../../Icon.png')}
               className="w-36 h-36"
               resizeMode="contain"
             />

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { Program, WorkoutSheet } from '../../types';
+import { getLevelInfo, getLevelTitle } from '../../lib/gamification';
 
 export function StudentHomeScreen() {
   const { profile } = useAuthStore();
@@ -13,6 +14,7 @@ export function StudentHomeScreen() {
   const [program, setProgram] = useState<Program | null>(null);
   const [sheets, setSheets] = useState<WorkoutSheet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [workoutCount, setWorkoutCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -23,6 +25,14 @@ export function StudentHomeScreen() {
 
   async function loadProgram() {
     setLoading(true);
+
+    const { count } = await supabase
+      .from('workout_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_id', profile!.id)
+      .not('finished_at', 'is', null);
+    setWorkoutCount(count ?? 0);
+
     const { data: prog } = await supabase
       .from('programs')
       .select('*')
@@ -48,6 +58,8 @@ export function StudentHomeScreen() {
   }
 
   const firstName = profile?.name?.split(' ')[0] ?? '';
+  const { level, currentXP, nextLevelXP } = getLevelInfo(workoutCount);
+  const xpProgress = nextLevelXP > 0 ? (currentXP / nextLevelXP) * 100 : 100;
 
   return (
     <SafeAreaView className="flex-1 bg-brand-dark">
@@ -56,6 +68,27 @@ export function StudentHomeScreen() {
           <Text className="text-gray-400 text-sm">Bem-vindo,</Text>
           <Text className="text-white text-3xl font-bold">{firstName} 💪</Text>
         </View>
+
+        {/* Card de nível */}
+        <TouchableOpacity
+          className="mx-6 bg-brand-dark-2 rounded-2xl px-4 py-3 mb-4"
+          onPress={() => navigation.navigate('Conquistas')}
+        >
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-white text-sm font-semibold">
+              {getLevelTitle(level)} · Nível {level}
+            </Text>
+            <Text className="text-brand-green text-xs">
+              {currentXP}/{nextLevelXP} XP →
+            </Text>
+          </View>
+          <View className="h-1.5 bg-brand-dark-3 rounded-full overflow-hidden">
+            <View
+              className="h-full bg-brand-green rounded-full"
+              style={{ width: `${xpProgress}%` }}
+            />
+          </View>
+        </TouchableOpacity>
 
         <View className="px-6 mt-2">
           {loading ? (

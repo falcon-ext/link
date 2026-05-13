@@ -12,6 +12,7 @@ export type StudentWorkoutStackParams = {
     duration: number;
     setsCompleted: number;
     exercisesTotal: number;
+    postId?: string;
   };
 };
 
