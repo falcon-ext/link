@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WorkoutPickScreen } from '../screens/student/WorkoutPickScreen';
 import { WorkoutExecutionScreen } from '../screens/student/WorkoutExecutionScreen';
 import { WorkoutSummaryScreen } from '../screens/student/WorkoutSummaryScreen';
+import { WorkoutViewScreen } from '../screens/student/WorkoutViewScreen';
 import { WorkoutSheet, Program } from '../types';
 
 export type StudentWorkoutStackParams = {
@@ -14,6 +15,7 @@ export type StudentWorkoutStackParams = {
     exercisesTotal: number;
     postId?: string;
   };
+  WorkoutView: { sheet: WorkoutSheet };
 };
 
 const Stack = createNativeStackNavigator<StudentWorkoutStackParams>();
@@ -24,6 +26,7 @@ export function StudentWorkoutStack() {
       <Stack.Screen name="WorkoutPick" component={WorkoutPickScreen} />
       <Stack.Screen name="WorkoutExecution" component={WorkoutExecutionScreen} />
       <Stack.Screen name="WorkoutSummary" component={WorkoutSummaryScreen} />
+      <Stack.Screen name="WorkoutView" component={WorkoutViewScreen} />
     </Stack.Navigator>
   );
 }

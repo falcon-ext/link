@@ -130,7 +130,17 @@ export function WorkoutPickScreen({ navigation }: Props) {
                     <Text className="text-brand-green text-xs mt-0.5">Concluído hoje ✓</Text>
                   )}
                 </View>
-                {!done && <Ionicons name="chevron-forward" size={22} color="#8DC63F" />}
+                {done ? (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('WorkoutView', { sheet })}
+                    className="bg-brand-dark px-3 py-1.5 rounded-full"
+                    hitSlop={8}
+                  >
+                    <Text className="text-gray-400 text-xs font-semibold">Ver</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Ionicons name="chevron-forward" size={22} color="#8DC63F" />
+                )}
               </TouchableOpacity>
             );
           })}
