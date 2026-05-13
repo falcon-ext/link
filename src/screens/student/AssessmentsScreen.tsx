@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,13 +39,29 @@ function bmi(w: number | null, h: number | null): string | null {
   return (w / Math.pow(h / 100, 2)).toFixed(1);
 }
 
-function Chip({ label, value, unit }: { label: string; value: number | null; unit: string }) {
+function MetricCol({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
+  return (
+    <View className="flex-1 items-center py-3">
+      <Text className="text-white font-bold text-lg">
+        {value}
+        {unit && <Text className="text-gray-500 text-xs">{unit}</Text>}
+      </Text>
+      <Text className="text-gray-500 text-xs mt-0.5">{label}</Text>
+    </View>
+  );
+}
+
+function MeasureRow({ label, value, unit = 'cm', last = false }: {
+  label: string; value: number | null; unit?: string; last?: boolean;
+}) {
   if (value == null) return null;
   return (
-    <View className="bg-brand-dark rounded-lg px-3 py-1.5 mr-2 mb-2">
-      <Text className="text-gray-400 text-xs">
-        {label} <Text className="text-white font-semibold">{value}{unit}</Text>
-      </Text>
+    <View
+      className="flex-row items-center justify-between py-2.5 px-4"
+      style={{ borderBottomWidth: last ? 0 : 1, borderBottomColor: '#2E3330' }}
+    >
+      <Text className="text-gray-400 text-sm">{label}</Text>
+      <Text className="text-white text-sm font-semibold">{value} {unit}</Text>
     </View>
   );
 }
@@ -54,6 +70,7 @@ export function AssessmentsScreen() {
   const { profile } = useAuthStore();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [photoMap, setPhotoMap]       = useState<Record<string, Photo[]>>({});
+  const [expanded, setExpanded]       = useState<Record<string, boolean>>({});
   const [loading, setLoading]         = useState(true);
 
   useFocusEffect(useCallback(() => { loadAssessments(); }, []));
@@ -85,13 +102,12 @@ export function AssessmentsScreen() {
     setLoading(false);
   }
 
-  // Weight chart — last 6 with weight, ascending
   const chartPoints = assessments
     .filter((a) => a.weight_kg != null)
     .slice(0, 6)
     .reverse();
-  const maxW = chartPoints.length > 0 ? Math.max(...chartPoints.map((a) => a.weight_kg!)) : 0;
-  const minW = chartPoints.length > 0 ? Math.min(...chartPoints.map((a) => a.weight_kg!)) : 0;
+  const maxW  = chartPoints.length > 0 ? Math.max(...chartPoints.map((a) => a.weight_kg!)) : 0;
+  const minW  = chartPoints.length > 0 ? Math.min(...chartPoints.map((a) => a.weight_kg!)) : 0;
   const range = maxW - minW || 1;
 
   if (loading) {
@@ -132,10 +148,11 @@ export function AssessmentsScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: CHART_H + 36 }}>
                     {chartPoints.map((a, i) => {
                       const barH = Math.max(8, ((a.weight_kg! - minW) / range) * CHART_H + 8);
+                      const isLast = i === chartPoints.length - 1;
                       return (
                         <View key={a.id} style={{ width: BAR_W, marginRight: i < chartPoints.length - 1 ? 8 : 0, alignItems: 'center' }}>
                           <Text style={{ color: '#8DC63F', fontSize: 9, marginBottom: 2 }}>{a.weight_kg}kg</Text>
-                          <View style={{ width: BAR_W, height: barH, backgroundColor: i === chartPoints.length - 1 ? '#8DC63F' : '#2E5B1A', borderRadius: 4 }} />
+                          <View style={{ width: BAR_W, height: barH, backgroundColor: isLast ? '#8DC63F' : '#2E5B1A', borderRadius: 4 }} />
                           <Text style={{ color: '#6b7280', fontSize: 8, marginTop: 3, textAlign: 'center' }}>
                             {a.assessed_at.slice(5).replace('-', '/')}
                           </Text>
@@ -147,89 +164,129 @@ export function AssessmentsScreen() {
               </View>
             )}
 
-            {/* Lista de avaliações */}
+            {/* Cards de avaliação */}
             <View className="px-6">
               {assessments.map((item) => {
-                const imc = bmi(item.weight_kg, item.height_cm);
+                const imc    = bmi(item.weight_kg, item.height_cm);
                 const photos = photoMap[item.id] ?? [];
-                const hasCircumf = item.chest_cm || item.waist_cm || item.hip_cm ||
-                  item.abdomen_cm || item.bicep_cm || item.thigh_cm;
+                const isOpen = expanded[item.id] ?? false;
+
+                const circumferences: { label: string; value: number | null }[] = [
+                  { label: 'Peitoral',  value: item.chest_cm   },
+                  { label: 'Cintura',   value: item.waist_cm   },
+                  { label: 'Quadril',   value: item.hip_cm     },
+                  { label: 'Abdômen',   value: item.abdomen_cm },
+                  { label: 'Bíceps',    value: item.bicep_cm   },
+                  { label: 'Coxa',      value: item.thigh_cm   },
+                ].filter((c) => c.value != null);
+
+                const hasDetails = circumferences.length > 0 || item.skinfolds || item.notes || photos.length > 0;
 
                 return (
-                  <View key={item.id} className="bg-brand-dark-2 rounded-2xl p-5 mb-4">
-                    <Text className="text-brand-green text-xs font-semibold uppercase mb-4">
-                      {formatDate(item.assessed_at)}
-                    </Text>
+                  <View key={item.id} className="bg-brand-dark-2 rounded-2xl mb-4 overflow-hidden">
+                    {/* Data */}
+                    <View className="px-5 pt-4 pb-3 border-b border-brand-dark-3">
+                      <Text className="text-brand-green text-xs font-semibold uppercase">
+                        {formatDate(item.assessed_at)}
+                      </Text>
+                    </View>
 
                     {/* Métricas principais */}
-                    {(item.weight_kg || item.height_cm || item.body_fat_pct) && (
-                      <View className="flex-row justify-around bg-brand-dark rounded-xl p-4 mb-4">
+                    {(item.weight_kg != null || imc || item.body_fat_pct != null) && (
+                      <View className="flex-row border-b border-brand-dark-3">
                         {item.weight_kg != null && (
-                          <View className="items-center px-2">
-                            <Text className="text-white font-bold text-base">{item.weight_kg}<Text className="text-gray-500 text-xs">kg</Text></Text>
-                            <Text className="text-gray-500 text-xs mt-0.5">Peso</Text>
-                          </View>
+                          <>
+                            <MetricCol label="Peso" value={item.weight_kg} unit="kg" />
+                            {(imc || item.body_fat_pct != null) && (
+                              <View className="w-px bg-brand-dark-3" />
+                            )}
+                          </>
                         )}
                         {imc && (
                           <>
-                            <View className="w-px bg-brand-dark-3" />
-                            <View className="items-center px-2">
-                              <Text className="text-white font-bold text-base">{imc}</Text>
-                              <Text className="text-gray-500 text-xs mt-0.5">IMC</Text>
-                            </View>
+                            <MetricCol label="IMC" value={imc} />
+                            {item.body_fat_pct != null && <View className="w-px bg-brand-dark-3" />}
                           </>
                         )}
                         {item.body_fat_pct != null && (
-                          <>
-                            <View className="w-px bg-brand-dark-3" />
-                            <View className="items-center px-2">
-                              <Text className="text-white font-bold text-base">{item.body_fat_pct}<Text className="text-gray-500 text-xs">%</Text></Text>
-                              <Text className="text-gray-500 text-xs mt-0.5">Gordura</Text>
-                            </View>
-                          </>
+                          <MetricCol label="Gordura" value={item.body_fat_pct} unit="%" />
                         )}
                       </View>
                     )}
 
-                    {/* Circunferências */}
-                    {hasCircumf && (
-                      <View className="mb-3">
-                        <Text className="text-gray-500 text-xs uppercase font-semibold mb-2">Medidas</Text>
-                        <View className="flex-row flex-wrap">
-                          <Chip label="Peitoral" value={item.chest_cm}   unit="cm" />
-                          <Chip label="Cintura"  value={item.waist_cm}   unit="cm" />
-                          <Chip label="Quadril"  value={item.hip_cm}     unit="cm" />
-                          <Chip label="Abdômen"  value={item.abdomen_cm} unit="cm" />
-                          <Chip label="Bíceps"   value={item.bicep_cm}   unit="cm" />
-                          <Chip label="Coxa"     value={item.thigh_cm}   unit="cm" />
-                        </View>
-                      </View>
+                    {/* Expandir / recolher detalhes */}
+                    {hasDetails && (
+                      <TouchableOpacity
+                        className="flex-row items-center justify-between px-5 py-3"
+                        onPress={() => setExpanded((prev) => ({ ...prev, [item.id]: !isOpen }))}
+                      >
+                        <Text className="text-gray-400 text-sm">
+                          {isOpen ? 'Ocultar detalhes' : 'Ver detalhes'}
+                        </Text>
+                        <Ionicons
+                          name={isOpen ? 'chevron-up' : 'chevron-down'}
+                          size={16}
+                          color="#6b7280"
+                        />
+                      </TouchableOpacity>
                     )}
 
-                    {/* Dobras */}
-                    {item.skinfolds ? (
-                      <Text className="text-gray-500 text-xs mb-3 italic">{item.skinfolds}</Text>
-                    ) : null}
-
-                    {/* Observações */}
-                    {item.notes ? (
-                      <Text className="text-gray-500 text-xs italic mb-3">{item.notes}</Text>
-                    ) : null}
-
-                    {/* Fotos */}
-                    {photos.length > 0 && (
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {photos.map((photo) => (
-                          <View key={photo.id} className="mr-3">
-                            <Image
-                              source={{ uri: photo.photo_url }}
-                              style={{ width: 100, height: 133, borderRadius: 10 }}
-                              resizeMode="cover"
-                            />
-                            <Text className="text-gray-600 text-xs text-center mt-1">{photo.position}</Text>
+                    {isOpen && (
+                      <>
+                        {/* Circunferências */}
+                        {circumferences.length > 0 && (
+                          <View className="border-t border-brand-dark-3">
+                            <Text className="text-gray-500 text-xs uppercase font-semibold px-4 pt-3 pb-1">
+                              Medidas
+                            </Text>
+                            <View className="bg-brand-dark rounded-xl mx-4 mb-3 overflow-hidden">
+                              {circumferences.map((c, idx) => (
+                                <MeasureRow
+                                  key={c.label}
+                                  label={c.label}
+                                  value={c.value}
+                                  last={idx === circumferences.length - 1}
+                                />
+                              ))}
+                            </View>
                           </View>
-                        ))}
-                      </ScrollView>
+                        )}
+
+                        {/* Dobras */}
+                        {item.skinfolds && (
+                          <View className="px-5 pb-3">
+                            <Text className="text-gray-500 text-xs uppercase font-semibold mb-1">Dobras</Text>
+                            <Text className="text-gray-300 text-sm">{item.skinfolds}</Text>
+                          </View>
+                        )}
+
+                        {/* Observações */}
+                        {item.notes && (
+                          <View className="px-5 pb-3">
+                            <Text className="text-gray-500 text-xs uppercase font-semibold mb-1">Observações</Text>
+                            <Text className="text-gray-300 text-sm">{item.notes}</Text>
+                          </View>
+                        )}
+
+                        {/* Fotos */}
+                        {photos.length > 0 && (
+                          <View className="pb-4">
+                            <Text className="text-gray-500 text-xs uppercase font-semibold px-5 mb-2">Fotos</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+                              {photos.map((photo) => (
+                                <View key={photo.id} className="mr-3 items-center">
+                                  <Image
+                                    source={{ uri: photo.photo_url }}
+                                    style={{ width: 100, height: 133, borderRadius: 10 }}
+                                    resizeMode="cover"
+                                  />
+                                  <Text className="text-gray-600 text-xs text-center mt-1">{photo.position}</Text>
+                                </View>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        )}
+                      </>
                     )}
                   </View>
                 );
