@@ -36,6 +36,7 @@ export function StudentTabs() {
         const tab = tabs.find((t) => t.name === route.name);
         return {
           headerShown: false,
+          animation: 'fade',
           tabBarActiveTintColor: '#8DC63F',
           tabBarInactiveTintColor: '#6b7280',
           tabBarStyle: {
