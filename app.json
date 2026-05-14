@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PowerLink",
+    "name": "PowerLink Personal",
     "slug": "powerlink",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,11 +14,12 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.powerlink.app",
+      "bundleIdentifier": "com.falconext.powerlink",
       "infoPlist": {
         "NSCameraUsageDescription": "Usado para tirar fotos de perfil e gravar vídeos de exercícios.",
         "NSMicrophoneUsageDescription": "Usado para gravar vídeos de exercícios.",
-        "NSPhotoLibraryUsageDescription": "Usado para selecionar fotos de perfil e de avaliações físicas."
+        "NSPhotoLibraryUsageDescription": "Usado para selecionar fotos de perfil e de avaliações físicas.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -58,6 +59,12 @@
           "color": "#8DC63F"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2e84b192-26a9-498a-acd7-0b42c5159ae6"
+      }
+    },
+    "owner": "falcon1713"
   }
 }
