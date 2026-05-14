@@ -41,6 +41,11 @@ function brToISO(br: string): string | null {
   return `${y}-${m}-${d}`;
 }
 
+function isoToBR(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function Field({
   label, value, onChangeText, unit, placeholder, keyboardType = 'numeric', half = false,
 }: {
@@ -98,35 +103,58 @@ const EMPTY_SF: SFState = {
 
 export function NewAssessmentScreen({ navigation, route }: Props) {
   const { student } = route.params;
+  const ea        = route.params.assessment;
+  const editMode  = !!ea;
+  const editPhotos = route.params.editPhotos ?? [];
 
   // Dados básicos
-  const [date, setDate]   = useState(todayBR());
-  const [sex, setSex]     = useState<Sex | null>(null);
-  const [age, setAge]     = useState('');
+  const [date, setDate]   = useState(ea ? isoToBR(ea.assessed_at) : todayBR());
+  const [sex, setSex]     = useState<Sex | null>(ea?.sex ?? null);
+  const [age, setAge]     = useState(ea?.age_years != null ? String(ea.age_years) : '');
 
   // Antropometria
-  const [weight, setWeight] = useState('');
-  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState(ea?.weight_kg != null ? String(ea.weight_kg) : '');
+  const [height, setHeight] = useState(ea?.height_cm != null ? String(ea.height_cm) : '');
 
   // Perimetria
-  const [chest, setChest]               = useState('');
-  const [waist, setWaist]               = useState('');
-  const [abdomen, setAbdomen]           = useState('');
-  const [hip, setHip]                   = useState('');
-  const [bicep, setBicep]               = useState('');
-  const [bracoContraido, setBracoContraido] = useState('');
-  const [thigh, setThigh]               = useState('');
-  const [coxaMedial, setCoxaMedial]     = useState('');
+  const [chest, setChest]               = useState(ea?.chest_cm           != null ? String(ea.chest_cm)           : '');
+  const [waist, setWaist]               = useState(ea?.waist_cm           != null ? String(ea.waist_cm)           : '');
+  const [abdomen, setAbdomen]           = useState(ea?.abdomen_cm         != null ? String(ea.abdomen_cm)         : '');
+  const [hip, setHip]                   = useState(ea?.hip_cm             != null ? String(ea.hip_cm)             : '');
+  const [bicep, setBicep]               = useState(ea?.bicep_cm           != null ? String(ea.bicep_cm)           : '');
+  const [bracoContraido, setBracoContraido] = useState(ea?.braco_contraido_cm != null ? String(ea.braco_contraido_cm) : '');
+  const [thigh, setThigh]               = useState(ea?.thigh_cm           != null ? String(ea.thigh_cm)           : '');
+  const [coxaMedial, setCoxaMedial]     = useState(ea?.coxa_medial_cm     != null ? String(ea.coxa_medial_cm)     : '');
 
   // Dobras
-  const [protocol, setProtocol] = useState<Protocol | null>(null);
-  const [sf, setSf]             = useState<SFState>(EMPTY_SF);
+  const [protocol, setProtocol] = useState<Protocol | null>(ea?.skinfold_protocol ?? null);
+  const [sf, setSf]             = useState<SFState>(ea ? {
+    sfPeitoral:     ea.sf_peitoral     != null ? String(ea.sf_peitoral)     : '',
+    sfAxilarMedia:  ea.sf_axilar_media  != null ? String(ea.sf_axilar_media)  : '',
+    sfTriceps:      ea.sf_triceps      != null ? String(ea.sf_triceps)      : '',
+    sfSubescapular: ea.sf_subescapular != null ? String(ea.sf_subescapular) : '',
+    sfAbdominal:    ea.sf_abdominal    != null ? String(ea.sf_abdominal)    : '',
+    sfSuprailiaca:  ea.sf_suprailiaca  != null ? String(ea.sf_suprailiaca)  : '',
+    sfCoxa:         ea.sf_coxa         != null ? String(ea.sf_coxa)         : '',
+  } : EMPTY_SF);
 
   // Outros
-  const [notes, setNotes]   = useState('');
-  const [photos, setPhotos] = useState<PhotoSlot[]>(
-    POSITIONS.map((p) => ({ position: p, url: null, uploading: false }))
-  );
+  const [notes, setNotes]   = useState(ea?.notes ?? '');
+  const [photos, setPhotos] = useState<PhotoSlot[]>(() => {
+    if (ea) {
+      const slots = POSITIONS.map((pos) => {
+        const existing = editPhotos.find((p) => p.position === pos);
+        return { position: pos, url: existing?.photo_url ?? null, uploading: false };
+      });
+      for (const p of editPhotos) {
+        if (!POSITIONS.includes(p.position)) {
+          slots.push({ position: p.position, url: p.photo_url, uploading: false });
+        }
+      }
+      return slots;
+    }
+    return POSITIONS.map((p) => ({ position: p, url: null, uploading: false }));
+  });
   const [saving, setSaving] = useState(false);
 
   function updateSf(key: SFKey, value: string) {
@@ -226,55 +254,72 @@ export function NewAssessmentScreen({ navigation, route }: Props) {
 
     setSaving(true);
     try {
-      const { data: assessment, error } = await supabase
-        .from('physical_assessments')
-        .insert({
-          student_id:         student.id,
-          assessed_at:        isoDate,
-          sex:                sex ?? null,
-          age_years:          age ? parseInt(age) : null,
-          weight_kg:          weight     ? parseFloat(weight)     : null,
-          height_cm:          height     ? parseFloat(height)     : null,
-          body_fat_pct:       computed.bc?.fatPct ?? null,
-          chest_cm:           chest      ? parseFloat(chest)      : null,
-          waist_cm:           waist      ? parseFloat(waist)      : null,
-          hip_cm:             hip        ? parseFloat(hip)        : null,
-          abdomen_cm:         abdomen    ? parseFloat(abdomen)    : null,
-          bicep_cm:           bicep      ? parseFloat(bicep)      : null,
-          braco_contraido_cm: bracoContraido ? parseFloat(bracoContraido) : null,
-          thigh_cm:           thigh      ? parseFloat(thigh)      : null,
-          coxa_medial_cm:     coxaMedial ? parseFloat(coxaMedial): null,
-          skinfold_protocol:  protocol ?? null,
-          sf_peitoral:        sf.sfPeitoral     ? parseFloat(sf.sfPeitoral)     : null,
-          sf_axilar_media:    sf.sfAxilarMedia  ? parseFloat(sf.sfAxilarMedia)  : null,
-          sf_triceps:         sf.sfTriceps      ? parseFloat(sf.sfTriceps)      : null,
-          sf_subescapular:    sf.sfSubescapular ? parseFloat(sf.sfSubescapular) : null,
-          sf_abdominal:       sf.sfAbdominal    ? parseFloat(sf.sfAbdominal)    : null,
-          sf_suprailiaca:     sf.sfSuprailiaca  ? parseFloat(sf.sfSuprailiaca)  : null,
-          sf_coxa:            sf.sfCoxa         ? parseFloat(sf.sfCoxa)         : null,
-          notes:              notes || null,
-        })
-        .select('id')
-        .single();
+      const payload = {
+        assessed_at:        isoDate,
+        sex:                sex ?? null,
+        age_years:          age ? parseInt(age) : null,
+        weight_kg:          weight     ? parseFloat(weight)     : null,
+        height_cm:          height     ? parseFloat(height)     : null,
+        body_fat_pct:       computed.bc?.fatPct ?? null,
+        chest_cm:           chest      ? parseFloat(chest)      : null,
+        waist_cm:           waist      ? parseFloat(waist)      : null,
+        hip_cm:             hip        ? parseFloat(hip)        : null,
+        abdomen_cm:         abdomen    ? parseFloat(abdomen)    : null,
+        bicep_cm:           bicep      ? parseFloat(bicep)      : null,
+        braco_contraido_cm: bracoContraido ? parseFloat(bracoContraido) : null,
+        thigh_cm:           thigh      ? parseFloat(thigh)      : null,
+        coxa_medial_cm:     coxaMedial ? parseFloat(coxaMedial): null,
+        skinfold_protocol:  protocol ?? null,
+        sf_peitoral:        sf.sfPeitoral     ? parseFloat(sf.sfPeitoral)     : null,
+        sf_axilar_media:    sf.sfAxilarMedia  ? parseFloat(sf.sfAxilarMedia)  : null,
+        sf_triceps:         sf.sfTriceps      ? parseFloat(sf.sfTriceps)      : null,
+        sf_subescapular:    sf.sfSubescapular ? parseFloat(sf.sfSubescapular) : null,
+        sf_abdominal:       sf.sfAbdominal    ? parseFloat(sf.sfAbdominal)    : null,
+        sf_suprailiaca:     sf.sfSuprailiaca  ? parseFloat(sf.sfSuprailiaca)  : null,
+        sf_coxa:            sf.sfCoxa         ? parseFloat(sf.sfCoxa)         : null,
+        notes:              notes || null,
+      };
 
-      if (error || !assessment) throw error;
+      let assessmentId: string;
+
+      if (editMode) {
+        const { error } = await supabase
+          .from('physical_assessments')
+          .update(payload)
+          .eq('id', ea!.id);
+        if (error) throw error;
+        assessmentId = ea!.id;
+        await supabase.from('assessment_photos').delete().eq('assessment_id', assessmentId);
+      } else {
+        const { data: created, error } = await supabase
+          .from('physical_assessments')
+          .insert({ student_id: student.id, ...payload })
+          .select('id')
+          .single();
+        if (error || !created) throw error;
+        assessmentId = created.id;
+      }
 
       const photoInserts = photos
         .filter((p) => p.url)
-        .map((p) => ({ assessment_id: assessment.id, position: p.position, photo_url: p.url! }));
+        .map((p) => ({ assessment_id: assessmentId, position: p.position, photo_url: p.url! }));
       if (photoInserts.length > 0) {
         await supabase.from('assessment_photos').insert(photoInserts);
       }
 
-      sendPushToStudent(
-        student.id,
-        'Nova avaliação registrada 📊',
-        'Seu personal registrou uma nova avaliação física. Confira no app!',
-      ).catch(() => {});
+      if (!editMode) {
+        sendPushToStudent(
+          student.id,
+          'Nova avaliação registrada 📊',
+          'Seu personal registrou uma nova avaliação física. Confira no app!',
+        ).catch(() => {});
+      }
 
-      Alert.alert('Salvo!', 'Avaliação registrada com sucesso.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        editMode ? 'Atualizado!' : 'Salvo!',
+        editMode ? 'Avaliação atualizada com sucesso.' : 'Avaliação registrada com sucesso.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar a avaliação.');
     } finally {
@@ -297,7 +342,7 @@ export function NewAssessmentScreen({ navigation, route }: Props) {
             <TouchableOpacity className="mb-3" onPress={() => navigation.goBack()}>
               <Text className="text-brand-green text-sm">← Voltar</Text>
             </TouchableOpacity>
-            <Text className="text-white text-2xl font-bold">Nova Avaliação</Text>
+            <Text className="text-white text-2xl font-bold">{editMode ? 'Editar Avaliação' : 'Nova Avaliação'}</Text>
             <Text className="text-gray-400 text-sm mt-0.5">{student.name}</Text>
           </View>
 

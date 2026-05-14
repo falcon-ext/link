@@ -5,7 +5,7 @@ import { TrainerDashboardScreen } from '../screens/trainer/TrainerDashboardScree
 import { StudentsStack } from './StudentsStack';
 import { ExercisesStack } from './ExercisesStack';
 import { TipsScreen } from '../screens/trainer/TipsScreen';
-import { SettingsScreen } from '../screens/trainer/SettingsScreen';
+import { TrainerProfileStack } from './TrainerProfileStack';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -22,7 +22,7 @@ const tabs: {
   { name: 'Students',  label: 'Alunos',     component: StudentsStack,          icon: 'people-outline',   iconActive: 'people' },
   { name: 'Exercises', label: 'Exercícios', component: ExercisesStack,         icon: 'barbell-outline',  iconActive: 'barbell' },
   { name: 'Tips',      label: 'Dicas',      component: TipsScreen,             icon: 'bulb-outline',     iconActive: 'bulb' },
-  { name: 'Settings',  label: 'Config',     component: SettingsScreen,         icon: 'settings-outline', iconActive: 'settings' },
+  { name: 'Profile',   label: 'Perfil',     component: TrainerProfileStack,    icon: 'person-circle-outline', iconActive: 'person-circle' },
 ];
 
 export function TrainerTabs() {

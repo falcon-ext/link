@@ -9,6 +9,7 @@ export interface Profile {
   birth_date: string | null;
   goal: string | null;
   avatar_url: string | null;
+  bio: string | null;
   is_active: boolean;
   created_at: string;
 }

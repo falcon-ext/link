@@ -16,7 +16,7 @@ type WorkoutLogEntry = {
   sheetName: string;
 };
 
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const WEEKDAYS    = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -31,25 +31,37 @@ function formatDuration(seconds: number) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', {
+  // Usa a parte da data diretamente (sem conversão de fuso)
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
 
+// Retorna 'YYYY-MM-DD' no fuso local
+function localDateStr(date: Date): string {
+  return date.toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+}
+
+// Extrai 'YYYY-MM-DD' do ISO sem conversão de fuso
+function isoToLocalDate(iso: string): string {
+  return iso.slice(0, 10);
+}
+
 export function HistoryScreen() {
   const { profile } = useAuthStore();
-  const [logs, setLogs] = useState<WorkoutLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [logs, setLogs]             = useState<WorkoutLogEntry[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      loadHistory();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => {
+    loadHistory();
+    setSelectedDay(null);
+  }, []));
 
   async function loadHistory() {
     setLoading(true);
@@ -80,38 +92,61 @@ export function HistoryScreen() {
 
     setLogs(
       (logData as any[]).map((l) => ({
-        id: l.id,
-        finished_at: l.finished_at,
+        id:               l.id,
+        finished_at:      l.finished_at,
         duration_seconds: l.duration_seconds,
-        sheet_id: l.sheet_id,
-        sheetName: sheetMap[l.sheet_id] ?? 'Treino',
+        sheet_id:         l.sheet_id,
+        sheetName:        sheetMap[l.sheet_id] ?? 'Treino',
       }))
     );
     setLoading(false);
   }
 
-  // Calendário
-  const year = currentMonth.getFullYear();
+  // ── Calendário ──────────────────────────────────────────────
+  const year  = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  const isCurrentMonth =
-    today.getFullYear() === year && today.getMonth() === month;
 
+  const todayStr        = localDateStr(new Date());                        // 'YYYY-MM-DD' local
+  const [tY, tM, tD]   = todayStr.split('-').map(Number);
+  const isCurrentMonth  = tY === year && tM === month + 1;
+  const todayDay        = tD;
+
+  // Dias treinados no mês visível — usa a data local salva no ISO (sem fuso)
   const trainedDays = new Set(
     logs
-      .filter((l) => {
-        const d = new Date(l.finished_at);
-        return d.getFullYear() === year && d.getMonth() === month;
+      .map((l) => isoToLocalDate(l.finished_at))           // 'YYYY-MM-DD'
+      .filter((d) => {
+        const [y2, m2] = d.split('-').map(Number);
+        return y2 === year && m2 === month + 1;
       })
-      .map((l) => new Date(l.finished_at).getDate())
+      .map((d) => Number(d.split('-')[2]))                  // dia do mês
   );
+
+  // Logs agrupados por data local (para exibir ao clicar)
+  const logsByDate = new Map<string, WorkoutLogEntry[]>();
+  for (const log of logs) {
+    const key = isoToLocalDate(log.finished_at);
+    if (!logsByDate.has(key)) logsByDate.set(key, []);
+    logsByDate.get(key)!.push(log);
+  }
+
+  const daysInMonth    = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWeek = new Date(year, month, 1).getDay();
 
   const calendarCells: (number | null)[] = [];
   for (let i = 0; i < firstDayOfWeek; i++) calendarCells.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarCells.push(d);
 
+  // Logs a exibir na lista (filtrado pelo dia selecionado ou todos)
+  const selectedDateStr = selectedDay != null
+    ? `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
+    : null;
+
+  const displayedLogs = selectedDateStr
+    ? (logsByDate.get(selectedDateStr) ?? [])
+    : logs;
+
+  // ── Render ───────────────────────────────────────────────────
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-brand-dark items-center justify-center">
@@ -132,23 +167,21 @@ export function HistoryScreen() {
 
         {/* Calendário */}
         <View className="mx-6 bg-brand-dark-2 rounded-2xl p-4 mb-6">
+          {/* Navegação de mês */}
           <View className="flex-row items-center justify-between mb-4">
-            <TouchableOpacity onPress={() => setCurrentMonth(new Date(year, month - 1, 1))} className="p-1">
+            <TouchableOpacity
+              onPress={() => { setCurrentMonth(new Date(year, month - 1, 1)); setSelectedDay(null); }}
+              className="p-1"
+            >
               <Ionicons name="chevron-back" size={20} color="#8DC63F" />
             </TouchableOpacity>
-            <Text className="text-white font-semibold">
-              {MONTH_NAMES[month]} {year}
-            </Text>
+            <Text className="text-white font-semibold">{MONTH_NAMES[month]} {year}</Text>
             <TouchableOpacity
-              onPress={() => setCurrentMonth(new Date(year, month + 1, 1))}
+              onPress={() => { setCurrentMonth(new Date(year, month + 1, 1)); setSelectedDay(null); }}
               disabled={isCurrentMonth}
               className="p-1"
             >
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={isCurrentMonth ? '#374151' : '#8DC63F'}
-              />
+              <Ionicons name="chevron-forward" size={20} color={isCurrentMonth ? '#374151' : '#8DC63F'} />
             </TouchableOpacity>
           </View>
 
@@ -169,80 +202,95 @@ export function HistoryScreen() {
           <View className="flex-row flex-wrap">
             {calendarCells.map((day, idx) => {
               if (day === null) {
-                return (
-                  <View
-                    key={`e-${idx}`}
-                    style={{ width: '14.285%' }}
-                    className="h-9"
-                  />
-                );
+                return <View key={`e-${idx}`} style={{ width: '14.285%' }} className="h-9" />;
               }
-              const trained = trainedDays.has(day);
-              const isToday = isCurrentMonth && today.getDate() === day;
+
+              const trained   = trainedDays.has(day);
+              const isToday   = isCurrentMonth && day === todayDay;
+              const isSelected = day === selectedDay;
+
+              // Estilo do círculo
+              let bgColor     = 'transparent';
+              let borderColor = 'transparent';
+              let borderWidth = 0;
+              let textColor   = '#6b7280';
+
+              if (trained && isToday) {
+                bgColor = '#8DC63F'; borderColor = '#fff'; borderWidth = 2; textColor = '#1A1D1C';
+              } else if (trained) {
+                bgColor = '#8DC63F'; textColor = '#1A1D1C';
+              } else if (isToday) {
+                borderColor = '#8DC63F'; borderWidth = 2; textColor = '#8DC63F';
+              }
+
+              if (isSelected && !trained && !isToday) {
+                borderColor = '#4B5563'; borderWidth = 1;
+              }
+
+              const tappable = trained || isToday;
+
               return (
-                <View
+                <TouchableOpacity
                   key={day}
                   style={{ width: '14.285%' }}
                   className="h-9 items-center justify-center"
+                  onPress={tappable ? () => setSelectedDay(day === selectedDay ? null : day) : undefined}
+                  activeOpacity={tappable ? 0.7 : 1}
                 >
                   <View
                     className="w-8 h-8 rounded-full items-center justify-center"
-                    style={{
-                      backgroundColor: trained
-                        ? '#8DC63F'
-                        : isToday
-                        ? '#2E3330'
-                        : 'transparent',
-                    }}
+                    style={{ backgroundColor: bgColor, borderWidth, borderColor }}
                   >
-                    <Text
-                      className="text-xs font-semibold"
-                      style={{
-                        color: trained
-                          ? '#1A1D1C'
-                          : isToday
-                          ? '#8DC63F'
-                          : '#6b7280',
-                      }}
-                    >
+                    <Text className="text-xs font-semibold" style={{ color: textColor }}>
                       {day}
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
 
           {/* Legenda */}
-          <View className="flex-row items-center mt-3">
-            <View className="w-3 h-3 rounded-full bg-brand-green mr-1.5" />
-            <Text className="text-gray-500 text-xs">Dia treinado</Text>
+          <View className="flex-row items-center gap-4 mt-3">
+            <View className="flex-row items-center">
+              <View className="w-3 h-3 rounded-full bg-brand-green mr-1.5" />
+              <Text className="text-gray-500 text-xs">Treinado</Text>
+            </View>
+            <View className="flex-row items-center">
+              <View className="w-3 h-3 rounded-full border border-brand-green mr-1.5" />
+              <Text className="text-gray-500 text-xs">Hoje</Text>
+            </View>
           </View>
         </View>
 
         {/* Lista */}
-        {logs.length === 0 ? (
-          <View className="items-center mt-4 px-8">
-            <Ionicons name="time-outline" size={48} color="#374151" />
-            <Text className="text-gray-400 text-base font-semibold mt-3 text-center">
-              Nenhum treino ainda
+        <View className="px-6">
+          {/* Header da lista com filtro */}
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-semibold text-gray-500 uppercase">
+              {selectedDateStr
+                ? `Treinos de ${formatDate(selectedDateStr + 'T00:00:00')}`
+                : 'Todos os treinos'}
             </Text>
-            <Text className="text-gray-600 text-sm mt-1 text-center">
-              Seus treinos aparecerão aqui após a conclusão.
-            </Text>
+            {selectedDay != null && (
+              <TouchableOpacity onPress={() => setSelectedDay(null)}>
+                <Text className="text-brand-green text-xs">Ver todos</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        ) : (
-          <View className="px-6">
-            <Text className="text-xs font-semibold text-gray-500 uppercase mb-3">
-              Todos os treinos
-            </Text>
-            {logs.map((item) => (
+
+          {displayedLogs.length === 0 ? (
+            <View className="items-center mt-4 px-4 py-6 bg-brand-dark-2 rounded-2xl">
+              <Ionicons name="time-outline" size={40} color="#374151" />
+              <Text className="text-gray-400 text-sm font-semibold mt-3 text-center">
+                {selectedDay != null ? 'Nenhum treino neste dia.' : 'Nenhum treino ainda.'}
+              </Text>
+            </View>
+          ) : (
+            displayedLogs.map((item) => (
               <View key={item.id} className="bg-brand-dark-2 rounded-2xl p-4 mb-3">
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text
-                    className="text-white font-semibold flex-1 mr-2"
-                    numberOfLines={1}
-                  >
+                  <Text className="text-white font-semibold flex-1 mr-2" numberOfLines={1}>
                     {item.sheetName}
                   </Text>
                   <View className="bg-brand-green/20 rounded-full px-2 py-0.5">
@@ -251,23 +299,19 @@ export function HistoryScreen() {
                 </View>
                 <View className="flex-row items-center">
                   <Ionicons name="calendar-outline" size={13} color="#6b7280" />
-                  <Text className="text-gray-400 text-xs ml-1">
-                    {formatDate(item.finished_at)}
-                  </Text>
+                  <Text className="text-gray-400 text-xs ml-1">{formatDate(item.finished_at)}</Text>
                   {item.duration_seconds ? (
                     <>
                       <Text className="text-gray-600 text-xs mx-2">·</Text>
                       <Ionicons name="time-outline" size={13} color="#6b7280" />
-                      <Text className="text-gray-400 text-xs ml-1">
-                        {formatDuration(item.duration_seconds)}
-                      </Text>
+                      <Text className="text-gray-400 text-xs ml-1">{formatDuration(item.duration_seconds)}</Text>
                     </>
                   ) : null}
                 </View>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

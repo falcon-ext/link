@@ -1,9 +1,12 @@
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { StudentsStackParams } from '../../navigation/StudentsStack';
 import { AssessmentFull, AssessmentPhoto } from './TrainerAssessmentListScreen';
+import { supabase } from '../../lib/supabase';
 import {
   computeFromAssessment, sfSigma, calcRCQ, calcICE,
   rcqRisk, iceRisk, PROTOCOL_LABELS, PROTOCOL_FIELDS,
@@ -68,6 +71,36 @@ function RiskRow({ label, value, risk, last = false }: {
 
 export function AssessmentDetailScreen({ navigation, route }: Props) {
   const { assessment: a, student, photos } = route.params;
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    Alert.alert(
+      'Excluir avaliação',
+      `Tem certeza que deseja excluir a avaliação de ${formatDate(a.assessed_at)}? Esta ação não pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir', style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await supabase.from('assessment_photos').delete().eq('assessment_id', a.id);
+              const { error } = await supabase.from('physical_assessments').delete().eq('id', a.id);
+              if (error) throw error;
+              navigation.goBack();
+            } catch {
+              Alert.alert('Erro', 'Não foi possível excluir a avaliação.');
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function handleEdit() {
+    navigation.navigate('NewAssessment', { student, assessment: a, editPhotos: photos });
+  }
 
   const imc  = bmi(a.weight_kg, a.height_cm);
   const bc   = computeFromAssessment(a);
@@ -104,9 +137,22 @@ export function AssessmentDetailScreen({ navigation, route }: Props) {
     <SafeAreaView className="flex-1 bg-brand-dark">
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-6 pt-4 pb-4">
-          <TouchableOpacity className="mb-3" onPress={() => navigation.goBack()}>
-            <Text className="text-brand-green text-sm">← Voltar</Text>
-          </TouchableOpacity>
+          <View className="flex-row items-center justify-between mb-3">
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Text className="text-brand-green text-sm">← Voltar</Text>
+            </TouchableOpacity>
+            <View className="flex-row items-center">
+              <TouchableOpacity onPress={handleEdit} hitSlop={8} className="mr-5">
+                <Ionicons name="create-outline" size={22} color="#8DC63F" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} hitSlop={8} disabled={deleting}>
+                {deleting
+                  ? <ActivityIndicator size="small" color="#ef4444" />
+                  : <Ionicons name="trash-outline" size={22} color="#ef4444" />
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
           <Text className="text-white text-xl font-bold capitalize">{formatDate(a.assessed_at)}</Text>
           <Text className="text-gray-400 text-sm mt-0.5">{student.name}</Text>
         </View>

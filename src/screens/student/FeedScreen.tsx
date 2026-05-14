@@ -65,8 +65,6 @@ export function FeedScreen() {
 
   // Post manual
   const [postModal, setPostModal]           = useState(false);
-  const [postSheets, setPostSheets]         = useState<{ id: string; name: string }[]>([]);
-  const [postSelectedSheet, setPostSelectedSheet] = useState<{ id: string; name: string } | null>(null);
   const [postPhotoUri, setPostPhotoUri]     = useState<string | null>(null);
   const [postPhotoUrl, setPostPhotoUrl]     = useState<string | null>(null);
   const [uploadingPostPhoto, setUploadingPostPhoto] = useState(false);
@@ -182,31 +180,9 @@ export function FeedScreen() {
     }
   }
 
-  async function openPostModal() {
-    setPostSelectedSheet(null);
+  function openPostModal() {
     setPostPhotoUri(null);
     setPostPhotoUrl(null);
-
-    // Carrega treinos da ficha ativa
-    const { data: prog } = await supabase
-      .from('programs')
-      .select('id')
-      .eq('student_id', profile!.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (prog) {
-      const { data: sheetData } = await supabase
-        .from('workout_sheets')
-        .select('id, name')
-        .eq('program_id', prog.id)
-        .order('order_index');
-      setPostSheets((sheetData as { id: string; name: string }[]) ?? []);
-    } else {
-      setPostSheets([]);
-    }
     setPostModal(true);
   }
 
@@ -233,6 +209,10 @@ export function FeedScreen() {
   }
 
   async function handleManualPost() {
+    if (!postPhotoUrl) {
+      Alert.alert('Atenção', 'Selecione uma foto para publicar.');
+      return;
+    }
     setSavingPost(true);
     try {
       const { data: post } = await supabase
@@ -241,8 +221,8 @@ export function FeedScreen() {
           student_id: profile!.id,
           student_name: profile!.name,
           student_avatar_url: profile!.avatar_url ?? null,
-          sheet_name: postSelectedSheet?.name ?? null,
-          photo_url: postPhotoUrl ?? null,
+          sheet_name: null,
+          photo_url: postPhotoUrl,
         })
         .select()
         .single();
@@ -442,9 +422,7 @@ export function FeedScreen() {
                       {post.student_name}
                     </Text>
                     <Text className="text-gray-500 text-xs">
-                      {post.sheet_name ? `Treinou · ${post.sheet_name}` : 'Treinou'}
-                      {' · '}
-                      {timeAgo(post.created_at)}
+                      {'Treinou · '}{timeAgo(post.created_at)}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-2">
@@ -458,6 +436,12 @@ export function FeedScreen() {
                     </View>
                   </View>
                 </View>
+
+                {post.sheet_name && (
+                  <View className="px-4 pb-3">
+                    <Text className="text-white text-sm leading-5">{post.sheet_name}</Text>
+                  </View>
+                )}
 
                 {/* Foto */}
                 {post.photo_url && (
@@ -512,71 +496,50 @@ export function FeedScreen() {
       {/* Post manual modal */}
       <Modal visible={postModal} animationType="slide" transparent>
         <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View className="bg-brand-dark rounded-t-3xl px-6 pt-6 pb-10">
-              <View className="flex-row items-center justify-between mb-5">
-                <Text className="text-white text-xl font-bold">Novo post</Text>
-                <TouchableOpacity onPress={() => setPostModal(false)}>
-                  <Ionicons name="close" size={24} color="#6b7280" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Seletor de treino */}
-              <Text className="text-sm font-medium text-gray-400 mb-2">O que você está treinando?</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-                {[{ id: '', name: 'Treino livre' }, ...postSheets].map((s) => {
-                  const selected = postSelectedSheet?.id === s.id || (!postSelectedSheet && s.id === '');
-                  return (
-                    <TouchableOpacity
-                      key={s.id || 'free'}
-                      onPress={() => setPostSelectedSheet(s.id ? s : null)}
-                      className="rounded-full px-4 py-2 mr-2"
-                      style={{
-                        backgroundColor: selected ? '#8DC63F' : '#242827',
-                        flexShrink: 0,
-                        flexGrow: 0,
-                      }}
-                    >
-                      <Text
-                        className="text-sm font-semibold"
-                        style={{ color: selected ? '#1A1D1C' : '#6b7280' }}
-                      >
-                        {s.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Foto */}
-              <TouchableOpacity
-                onPress={pickPostPhoto}
-                disabled={uploadingPostPhoto}
-                className="bg-brand-dark-2 rounded-2xl p-4 flex-row items-center mb-6"
-              >
-                {uploadingPostPhoto ? (
-                  <ActivityIndicator color="#8DC63F" size="small" style={{ marginRight: 10 }} />
-                ) : (
-                  <Ionicons name="camera-outline" size={20} color={postPhotoUri ? '#8DC63F' : '#6b7280'} style={{ marginRight: 10 }} />
-                )}
-                <Text style={{ color: postPhotoUri ? '#8DC63F' : '#6b7280', fontSize: 14 }}>
-                  {postPhotoUri ? 'Foto selecionada ✓ (toque para trocar)' : 'Adicionar foto (opcional)'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className={`rounded-xl py-4 items-center ${savingPost || uploadingPostPhoto ? 'bg-brand-green-dark' : 'bg-brand-green'}`}
-                onPress={handleManualPost}
-                disabled={savingPost || uploadingPostPhoto}
-              >
-                {savingPost ? (
-                  <ActivityIndicator color="#1A1D1C" />
-                ) : (
-                  <Text className="text-brand-dark font-bold text-base">Publicar no feed</Text>
-                )}
+          <View className="bg-brand-dark rounded-t-3xl px-6 pt-6 pb-10">
+            <View className="flex-row items-center justify-between mb-5">
+              <Text className="text-white text-xl font-bold">Compartilhar foto</Text>
+              <TouchableOpacity onPress={() => setPostModal(false)}>
+                <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
+
+            <TouchableOpacity
+              onPress={pickPostPhoto}
+              disabled={uploadingPostPhoto}
+              className="rounded-2xl overflow-hidden mb-6"
+              style={{
+                height: postPhotoUri ? 220 : 120,
+                backgroundColor: '#1A1D1C',
+                borderWidth: 1, borderColor: '#2E3330',
+                borderStyle: postPhotoUri ? 'solid' : 'dashed',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {uploadingPostPhoto ? (
+                <ActivityIndicator color="#8DC63F" />
+              ) : postPhotoUri ? (
+                <Image source={{ uri: postPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
+                <View className="items-center">
+                  <Ionicons name="camera-outline" size={36} color="#4B5563" />
+                  <Text className="text-gray-600 text-sm mt-2">Toque para selecionar uma foto</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className={`rounded-xl py-4 items-center ${savingPost || uploadingPostPhoto ? 'bg-brand-green-dark' : 'bg-brand-green'}`}
+              onPress={handleManualPost}
+              disabled={savingPost || uploadingPostPhoto}
+            >
+              {savingPost ? (
+                <ActivityIndicator color="#1A1D1C" />
+              ) : (
+                <Text className="text-brand-dark font-bold text-base">Publicar no feed</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 

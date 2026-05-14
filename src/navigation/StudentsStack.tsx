@@ -28,7 +28,7 @@ export type StudentsStackParams = {
   SessionDetail: { logId: string; sheetName: string; finishedAt: string; studentId: string };
   ExerciseEvolution: { studentId: string; exerciseId: string; exerciseName: string };
   TrainerAssessmentList: { student: Profile };
-  NewAssessment: { student: Profile };
+  NewAssessment: { student: Profile; assessment?: AssessmentFull; editPhotos?: AssessmentPhoto[] };
   AssessmentDetail: { assessment: AssessmentFull; student: Profile; photos: AssessmentPhoto[] };
   AssessmentCompare: { studentId: string; assessmentAId: string; assessmentBId: string };
   ProgramsList: { student: Profile };
